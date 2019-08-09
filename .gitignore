@@ -1,0 +1,10 @@
+*.csv
+*.html
+*Rhistory
+*.jpeg
+*.JPEG
+
+*.PNG
+*.xlsx
+tfg-dge.R
+*.png
