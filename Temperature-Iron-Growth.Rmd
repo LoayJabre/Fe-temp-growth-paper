@@ -1,0 +1,1527 @@
+
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+require(ggplot2)
+require(dplyr)
+require(lubridate)
+require(reshape2)
+require(tidyr)
+require(Hmisc)
+require(data.table)
+require (plotly)
+require(growthrates)
+require(lattice)
+require (stringr)
+require(drc)
+require(nlstools)
+library(nls2)
+library(gridExtra)
+library(nlme)
+library(ggstance)
+setwd("C:/Users/Loay Jabre/Desktop/PhD/Growth Experiment/RFU-growth-experiment/GrowthPaper")
+#require (tidyverse)
+```
+  
+Calculating efree iron (Fe') concentrations: 
+Total iron, AKA total amount of iron you add to the media with EDTA is different than Fe', AKA free iron, AKA inorganic iron that is available for   phytoplankton to grow. You can calculate Fe' from total iron, if you know the temperature, light level, pH, number of light hours etc.. This is a difficult calculations, and there are many assumptions to make, because the dissociation constants are not measured experimentally at the low temperatures temperatures that Fragilariopsis grows at. So, using extrapolations from published literature, we can do the following: 
+
+These are data from Sunda and Huntsman, 2003 "Effect of pH, light, and temperature on Fe-EDTA chelation and Fe hydrolysis in seawater" paper. I used the data from the table they provided to re-draw their graphs, so I can do an extrapolation. 
+```{r}
+#just entering the values from the table
+Temperature <- c(20,20,20,20,20,20,20,20,20,20,20,20,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10
+)
+
+PAR<- c(0,0,0,0,0,0,0,500,500,500,500,500,0,0,0,0,0,0,0,0,0,0,0,0,500,500,500,500,500,500,500,500,500,500
+)
+
+pH <- c(8.95,8.43,7.99,8.19,8.14,8.15,8.81,7.83,7.98,8.38,8.93,8.15,7.85,8.06,8.29,7.78,8.11,8.33,7.65,7.99,8.25,7.68,7.98,8.21,7.89,8.07,8.28,7.85,8.02,8.22,8.02,8.17,8.02,8.15
+)
+
+EDTA <- c(50,10,3,3,35,8,25,20,3,10,50,35,1,3,3,1,3,3,1,3,3,1,3,3,10,30,30,10,30,30,30,30,30,30
+)
+
+Fe_total <- c(20,20,20,20,9,9,9,9,20,20,20,9,20,20,20,8,8,8,8,8,8,8,8,8,20,20,20,20,20,20,8,8,8,8
+)
+
+FeIII <- c(2.73,0.77,0.238,0.57,0.028,0.096,1.12,0.071,1.45,1.29,2.55,0.086,0.466,0.456,0.93,0.149,0.19,0.376,0.101,0.137,0.296,0.112,0.105,0.247,0.819,0.451,0.7,0.785,0.623,0.695,0.178,0.237,0.19,0.227
+)
+
+logKd <- c(-5.1,-6.4,-7.44,-7.05,-6.97,-7.07,-5.46,-6.8,-6.63,-6.16,-5.14,-6.47,-7.62,-7.16,-6.83,-7.72,-7.14,-6.83,-7.89,
+-7.28,-6.94,-7.85,-7.4,-7.02,-6.37,-6.16,-5.96,-6.39,-6.02,-5.97,-6.17,-6.04,-6.14,-6.06
+)
+
+#combining all the values into a dataframe
+dissociation_table <- data.frame(Temperature, PAR, pH, EDTA, Fe_total, FeIII, logKd)
+
+
+#changing some of the datatypes into characters for plotting purposes
+dissociation_table$Temperature <- as.character(dissociation_table$Temperature)
+dissociation_table$PAR <- as.character(dissociation_table$PAR)
+
+
+#this plot is almost identical to the plot provided in the paper. I believe that they missed a data point, at the 500PAR, 20C, so that line looks slightly different. 
+
+#png("supp_figure1.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+
+ggplot (dissociation_table, aes( x = pH, y = logKd, color = Temperature, shape = PAR))+
+  geom_point(size = 3, alpha = 0.9)+
+  theme_bw()+ 
+  scale_color_manual (values = c("blue", "red"))+
+  scale_shape_manual(values  = c(16,1))+
+  geom_smooth(method = 'lm', se = FALSE)+
+   ylab(expression(Log~K[d]~(dissociation~constant)))+
+  xlab(expression(pH))+
+  theme(axis.text.x=element_text(face = "bold", size = 12, color = "black"),
+        axis.title.x=element_text(size=18,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12, color = "black"),
+        axis.title.y=element_text(size=18,face="bold"))+
+  theme (legend.title = element_text (size = 12), legend.text = element_text(size = 12), legend.position = c(0.85, 0.18))+
+  labs(col="Temperature (°C)")+
+  labs (shape = expression(PAR~(mu*mol~photons~m^-2~s^-1)))+
+ theme(panel.grid = element_blank())
+
+#dev.off()
+
+
+#Because pH has an effect on Kd (dissociation constant), I chose pH 8-8.3 (similar to my growth media) to extrapolate the effects of temperature and light. 
+#The Kd in the dark will be Kd(dark), the Kd in the light (regardless of light level), can be refered to as Khv
+
+dissociation_constants_pH <- dissociation_table%>% filter (between (pH, 8 ,8.3))
+
+ggplot (dissociation_constants_pH, aes( x = Temperature, y = logKd, shape = PAR, group= PAR))+
+  geom_point(size = 3)+
+  geom_smooth(method = 'lm', color = "black")+
+  scale_shape_manual (values = c(16,1))+
+  ylab(expression(Log~K[d]~(dissociation~constant)))+
+  xlab(expression(Temperature~(degree*C)))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold", size = 12, color = "black"),
+        axis.title.x=element_text(size=18,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12, color = "black"),
+        axis.title.y=element_text(size=18,face="bold"))+
+  theme (legend.title = element_text (size = 12), legend.text = element_text(size = 12), legend.position = c(0.85, 0.92))+
+  labs (shape = expression(PAR~(mu*mol~photons~m^-2~s^-1)))+
+ theme(panel.grid = element_blank())
+
+#From here we see that in the dark, Kd(dark) is not affected by temperature, but Kd(light) or Khv is  temperature sensitive. I will assume that the temperature effect on Kd in the light (Khv) is linear (no other data available to suggest otherwise). so, I modelled it as such. 
+
+
+
+dissociation_constants_pH$PAR <- as.numeric(dissociation_constants_pH$PAR)
+dissociation_constants_pH$Temperature <- as.numeric(dissociation_constants_pH$Temperature)
+#choosing only the light 
+Kd_data <- dissociation_constants_pH%>%filter(between (PAR, 100, 501))
+
+#doing a linear model and plotting the Khv (Kd in the light) value against some temperatures
+templinear <- lm(logKd~ Temperature, data=Kd_data)
+summary(templinear)
+dataframe <- data.frame (Temperature=c(1,3,6,10,20))
+
+z<- predict.lm(templinear, dataframe)
+xdata<- data.frame(z)
+rownames(xdata)<- c(1,3,6,10,20)
+
+xdata$Temperature <- c(1,3,6,10,20)
+
+ggplot (xdata, aes( x = Temperature, y = z))+
+  geom_point(size = 3)+
+  theme_bw()+
+  theme_bw()+theme(axis.text.x=element_text(face = "bold", size = 12),
+        axis.title.x=element_text(size=13,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=13,face="bold"))+
+  ylab("Log Khv (dissociation constant in the light)")
+
+
+
+
+
+#Now we can use that linear model to calculate Fe' in media
+
+#Enter the total Fe concentrations here (Mol/L). We are assuming that FeEDTA = totalFe
+FeEDTA <- c(3.75E-09,0.00000001,0.000000015,0.00000002,0.000000035,0.00000005,0.0000001,0.0000005
+)
+
+#Enter the EDTA* (EDTA) concentrations here (Mol/L): This is the total concentration of EDTA minus all of the concentrations of metals (includring iron, so at high iron concentrations, you'll have less EDTA)
+EDTA <- c(9.95482E-05, 9.95419E-05, 9.95369E-05,9.95319E-05,9.95169E-05,9.95019E-05,9.94519E-05,9.90519E-05
+ )
+
+#Enter the temperatures (C)that your cultures were growting at 
+Temperature <- c(0.7,1,2.7,5.7)
+temp <- data.frame(Temperature)
+
+
+#Enter the light intensity  (umol photons/m2/s)
+Ihv <- 50
+
+#enter the number of light hours per day (i.e. 24 = constant light)
+h <- 22
+
+#Kd is the dissociation constant in the dark. This is indepdnet of temperature. 
+Kd <- 9.5499E-8
+
+
+
+
+iron <- data.frame(EDTA, FeEDTA, Kd, Ihv)
+iron_2 <- merge (iron, temp)
+
+iron_2$logKhv <- predict.lm(templinear, iron_2)
+
+
+#just checking to see that our Khv values make sense for the temperatures we want
+ggplot (iron_2, aes( x = Temperature, y = logKhv))+
+  geom_point(size = 3)+
+  theme_bw()+
+  theme_bw()+theme(axis.text.x=element_text(face = "bold", size = 12),
+        axis.title.x=element_text(size=13,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=13,face="bold"))+
+  ylab("Log Khv (dissociation constant in the light)")
+
+
+
+
+#enter the value from the above dataframe and constants into this equation from 'algal culturing techniques', p 48. 
+iron_2$Fe <- (iron_2$FeEDTA*(Kd+Ihv/500*10^(iron_2$logKhv)*h/24))/iron_2$EDTA
+
+
+#the iron_2 dataframe now has the Fe' concentrations that correspond to different temperatures, we can plot those below , and we can see that as temperature increases, Fe' decreases. 
+
+ggplot (iron_2, aes( x = FeEDTA, y = Fe, color = Temperature))+
+  geom_point(size = 3)+
+  theme_bw()+
+  theme_bw()+theme(axis.text.x=element_text(face = "bold", size = 12),
+        axis.title.x=element_text(size=13,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=13,face="bold"))+
+  ylab("[Fe'] Mol L-1")+
+  xlab ("[Fetotal] Mol L-1")+
+  scale_color_gradient2(low = blues9, high = "red")+
+  scale_y_log10()+
+scale_x_log10()
+```
+
+  
+ 
+Import RFU and make sure headings are good
+```{r}
+
+rfu <- read.csv("LJ_alltemps_RFU.csv", header = TRUE )
+  
+colnames(rfu) <- as.character(unlist(rfu[1,]))
+rfu <- rfu [-c(1),] 
+```
+
+Make sure the instrument is performing consistenly
+```{r}
+instrument_check <- rfu[c(1:4, 7,8)]
+
+instrument_check$date <- as.Date(with(instrument_check, paste(year, month, day, sep = "-")),"%Y-%m-%d")
+
+instrument_check$standard <- as.numeric(as.character(instrument_check$standard))
+
+instrument_check$blank <- as.numeric(as.character(instrument_check$blank))
+instrument_check_sub <- melt (instrument_check, id.vars =c ("date", "blank", "standard"))
+
+
+
+
+a <- ggplot (instrument_check_sub, aes (x = date, y = blank))+
+  geom_point (size = 3)+
+  ylim (NA,5)+
+  ylab ("Filtered Media (RFU)")+
+  xlab ("Date")+
+  theme(axis.text.x = element_text (angle = 60, hjust =1))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold"),
+        axis.title.x=element_text(size=13,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=13,face="bold")
+        )
+
+
+
+b <- ggplot (instrument_check, aes (x = date, y = standard))+
+  geom_point (size = 3)+
+  ylim (0,15)+
+  ylab ("Rhodamine Blank (RFU)")+
+  xlab ("Date")+
+  theme(axis.text.x = element_text (angle = 60, hjust =1))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold"),
+        axis.title.x=element_text(size=13,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=13,face="bold")
+        )
+
+grid.arrange(a,b)
+```
+
+
+
+Getting Monod plots:
+```{r}
+#first, select the part of the data that we use for the monod plots (include all treatments, we can toss what we don't want and take out NA/s later)
+#the file "alltemps" has only the iron treatments. No manganese stuff here
+rfu_monod <- rfu [c(5,6,9:66)]
+names(rfu_monod)<- c("culturetemp", "daycount", "0_A","3.75_A", "10_A", "15_A", "20_A","35_A", "50_A", "100_A", "500_A","0_B", "3.75_B", "10_B", "15_B", "20_B","35_B", "50_B", "100_B", "500_B", "0_C", "3.75_C", "10_C", "15_C", "20_C","35_C", "50_C", "100_C", "500_C", "3.75_D", "10_D", "15_D", "20_D","35_D", "50_D", "100_D", "3.75_E", "10_E", "15_E", "20_E","35_E", "50_E", "100_E", "500_E","0_F", "3.75_F", "10_F", "20_F","35_F", "50_F", "100_F", "500_F", "3.75_G", "10_G", "20_G","35_G", "50_G", "100_G", "500_G", "35_H")
+
+#rfu_monod <- rfu [c(5,6,9:16, 19:25)]
+#names(rfu_monod)<- c("culturetemp", "daycount", "3.75_A", "10_A", "15_A", "20_A","35_A", "50_A", "100_A", "500_A", "10_B", "15_B", "20_B","35_B", "50_B", "100_B", "500_B")
+
+rfu_monod_sub <- melt (rfu_monod, id.vars = c("daycount", "culturetemp"))
+
+names(rfu_monod_sub) <- c("daycount", "culturetemp", "Fe", "RFU")
+
+
+
+rfu_monod_sub$daycount<- as.numeric (as.character(rfu_monod_sub$daycount))
+rfu_monod_sub$RFU<- as.numeric (as.character(rfu_monod_sub$RFU))
+
+#there are NAs in the data because there are more replicates at certain temperatures. So, we'll get rid of those NA's 
+
+
+rfu_monod_sub <- na.omit(rfu_monod_sub)
+
+
+monod_fit_RFU <- all_easylinear( RFU~daycount |Fe+culturetemp, data = rfu_monod_sub)
+
+#the model above calculates growth rate by fitting a linear model to the exponential groth curve. Below are the parameters and outputs if interested
+coef(monod_fit_RFU)
+summary(monod_fit_RFU)
+#rsquared(monod_fit_RFU)
+#par(mfrow = c(3,8)) 
+#plot(monod_fit_RFU, log = "y")
+
+#taking the output of the linear model and putting it into a dataframe
+monod_rfu<- coef(monod_fit_RFU ) %>%  data.frame 
+monod_rfu <- data.frame (treatment = row.names (monod_rfu), monod_rfu)
+rownames(monod_rfu) <- c()
+
+
+monod_rfu$culturetemp <- str_sub(monod_rfu$treatment, start = -4)
+monod_rfu$replicate <- str_sub(monod_rfu$treatment, start=-6, end = -6)
+monod_rfu$iron <- str_sub(monod_rfu$treatment, end=-8)
+monod_rfu$iron<- as.numeric (monod_rfu$iron)
+
+
+
+monod_rfu$FeEDTA <- monod_rfu$iron/1000000000
+monod_rfu$Temperature <- str_sub(monod_rfu$culturetemp, end = 3)
+monod_rfu$Temperature<- as.numeric (monod_rfu$Temperature)
+
+#after doing all the Fe' calculations at the desired temperatures, we can merge the two datasets to adjust for Fe'
+mergedata <- merge (monod_rfu, iron_2, by = c("FeEDTA", "Temperature"))
+
+mergedata_sub <- mergedata [c(3,2,15,6)]
+mergedata_sub$Temperature<- as.character (mergedata_sub$Temperature)
+#convert [Fe'] from mol L-1 to pM L-1
+mergedata_sub$Fee <- mergedata_sub$Fe*1000000000000
+
+#plot against Fe'
+ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = Temperature))+
+  geom_point (size = 3, alpha = 0.6)+
+  scale_y_continuous(breaks = seq(0, 0.4, 0.05))+
+  ylab ("Growth rate (d-1)")+
+  xlab ("[Fe'] (Mol L-1)")+
+  #scale_color_gradient2(low = blues9, mid = "Orange", high = "red")+
+  scale_color_manual(values = c("blue", "black","orange" ,"red", "darkred"))+
+  theme(axis.text.x = element_text (angle = 60, hjust =1))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold"),
+        axis.title.x=element_text(size=13,face="bold"),
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=13,face="bold")
+)
+
+
+
+#here, we can delete any datapoints we don't want
+
+#for example, I don't want the outlier in 1C at 500nM 
+mergedata_sub <- mergedata_sub [-c(66,67,71),]
+
+#monod1C_rfu_1 <- subset(monod1C_rfu,  Fee<300) 
+
+
+monod0.7C_rfu <- mergedata_sub[mergedata_sub$Temperature ==0.7,]
+#monod0.7C_rfu <- subset(monod0.7C_rfu,  Fee<300)
+
+monod1C_rfu <- mergedata_sub[mergedata_sub$Temperature ==1,]
+#monod1C_rfu <- subset(monod1C_rfu,  Fee<300) 
+
+monod2.7C_rfu <- mergedata_sub[mergedata_sub$Temperature ==2.7,]
+#monod2.7C_rfu <- subset(monod2.7C_rfu,  Fee<300)
+
+monod5.7C_rfu <- mergedata_sub[mergedata_sub$Temperature ==5.7,]
+#monod5.7C_rfu <- subset(monod5.7C_rfu,  Fee<300)
+
+
+monod0.7C_rfu$Fee<- as.numeric (monod0.7C_rfu$Fee)
+monod1C_rfu$Fee<- as.numeric (monod1C_rfu$Fee)
+monod2.7C_rfu$Fee<- as.numeric (monod2.7C_rfu$Fee)
+monod5.7C_rfu$Fee<- as.numeric (monod5.7C_rfu$Fee)
+
+
+monod_0.7C_rfu <- nls(mumax ~ Vm * Fee/(K+Fee), data = monod0.7C_rfu, 
+    start = list (K = 1E-5, Vm = max(monod0.7C_rfu$mumax)))
+
+monod_1C_rfu <- nls(mumax ~ Vm * Fee/(K+Fee), data = monod1C_rfu, 
+    start = list(K=1E-6, Vm = max(monod1C_rfu$mumax)))
+
+monod_2.7C_rfu <- nls(mumax ~ Vm * Fee/(K+Fee), data = monod2.7C_rfu, 
+    start = list(K=1E-6, Vm = max(monod2.7C_rfu$mumax)))
+
+monod_5.7C_rfu <- nls(mumax ~ Vm * Fee/(K+Fee), data = monod5.7C_rfu, 
+    start = list(K=1E-6, Vm = max(monod5.7C_rfu$mumax)))
+
+#http://strata.uga.edu/8370/lecturenotes/nonlinearRegression.html
+
+
+#temp1<- coef(monod_0.7C_rfu) %>%data.frame %>% `colnames<-`("0.7C")
+
+summary(monod_0.7C_rfu)
+summary(monod_1C_rfu)
+summary(monod_2.7C_rfu)
+summary(monod_5.7C_rfu)
+#there is no R^2 value for non-linear regression because it tends to be faulty. 
+
+
+monod_0.7 <- function(x){
+  (0.177*x)/((66.18+x))
+}
+
+
+monod_1 <- function(x){
+      (0.25*x)/((63.11+x))
+}
+
+
+monod_2.7 <- function(x){
+  (0.27*x)/((31.83+x))
+}
+
+monod_5.7 <- function(x){
+  (0.3458*x)/((28.275+x))
+}
+
+
+
+
+as.lm.nls <- function(object, ...) {
+    if (!inherits(object, "nls")) {
+		w <- paste("expected object of class nls but got object of class:", 
+			paste(class(object), collapse = " "))
+		warning(w)
+	}
+
+	gradient <- object$m$gradient()
+	if (is.null(colnames(gradient))) {
+		colnames(gradient) <- names(object$m$getPars())
+	}
+	response.name <- if (length(formula(object)) == 2) "0" else 
+		as.character(formula(object)[[2]])
+
+	lhs <- object$m$lhs()
+	L <- data.frame(lhs, gradient)
+	names(L)[1] <- response.name
+
+	fo <- sprintf("%s ~ %s - 1", response.name, 
+		paste(colnames(gradient), collapse = "+"))
+	fo <- as.formula(fo, env = proto:::as.proto.list(L))
+
+	do.call("lm", list(fo, offset = substitute(fitted(object))))
+
+}
+
+
+fit0.7C<-predict(as.lm.nls(monod_0.7C_rfu), interval = "confidence") 
+monod0.7C_rfu$lowerfit<-fit0.7C[,2]
+monod0.7C_rfu$upperfit<-fit0.7C[,3]
+
+fit1C<-predict(as.lm.nls(monod_1C_rfu), interval = "confidence") 
+monod1C_rfu$lowerfit<-fit1C[,2]
+monod1C_rfu$upperfit<-fit1C[,3]
+
+fit2.7C<-predict(as.lm.nls(monod_2.7C_rfu), interval = "confidence") 
+monod2.7C_rfu$lowerfit<-fit2.7C[,2]
+monod2.7C_rfu$upperfit<-fit2.7C[,3]
+
+
+fit5.7C<-predict(as.lm.nls(monod_5.7C_rfu), interval = "confidence") 
+monod5.7C_rfu$lowerfit<-fit5.7C[,2]
+monod5.7C_rfu$upperfit<-fit5.7C[,3]
+
+#mergedata_sub_1 <- mergedata_sub [-c(92,93),] 
+
+#png("figure1_mu-vs-Fe.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = Temperature))+
+  stat_summary(fun.y = mean, geom = "point",aes(group =Temperature, color = Temperature), size = 2.5)+
+  stat_summary(fun.data =  mean_se, geom = "errorbar",width = 0.5, aes(colour = Temperature ))+
+  scale_y_continuous(breaks = seq(0, 0.4, 0.05))+
+  ylab (expression (Growth~rate~ (mu~d^-1)))+
+  xlab (expression (Fe*"'"~ (pMole~L^-1)))+
+  scale_color_manual(values = c("black", "white", "red", "darkred"))+
+  theme(axis.text.x = element_text (angle = 60, hjust =1))+
+  theme_bw()+
+  stat_function(fun = monod_0.7, color = 'black')+
+  stat_function(fun = monod_1, color = 'white')+
+  stat_function(fun = monod_2.7, color = 'red')+
+  stat_function(fun = monod_5.7, color = 'darkred')+
+  theme(axis.text.x=element_text(face = "bold", size = 12, color = "black"),
+        axis.title.x=element_text(size=18,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12, color = "black"),
+        axis.title.y=element_text(size=18,face="bold"))+
+  theme (legend.title = element_text (size = 12), legend.text =   element_text(size = 12))+
+  labs(col="Temperature (°C)")+
+  theme(panel.grid = element_blank())
+
+# geom_ribbon(data=monod0.7C_rfu,
+        #   aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.3, fill = "black", color = NA)+
+  #geom_ribbon(data=monod1C_rfu,
+           # aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.3, fill = "orange", color = NA)+
+  #geom_ribbon(data=monod2.7C_rfu,
+            #  aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.3, fill = "red", color = NA)+
+ # geom_ribbon(data=monod5.7C_rfu, color = NA,
+           #  aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.3, fill = "darkred", color = NA)+
+                  
+#dev.off()
+
+#https://stackoverflow.com/questions/35976102/ggplot-fit-a-curve-geom-smooth-method-nls-with-ci95-bands
+
+
+
+
+
+###############################
+#checking to see if VERY low iron treatments have noticeable increase in growth rate. 
+  vlow <- subset(mergedata, iron == 50)
+
+ggplot (vlow, aes (x = iron, y = mumax, color = Temperature))+
+  geom_point (size = 3, alpha = 0.6)+
+  #scale_y_continuous(breaks = seq(0, 0.4, 0.05))+
+  ylab ("Growth rate (d-1)")+
+  xlab ("[Fe'] (Mol L-1)")+
+  #scale_color_gradient2(low = blues9, mid = "Orange", high = "red")+
+  #scale_color_manual(values = c("blue", "black","orange" ,"red", "darkred"))+
+  theme(axis.text.x = element_text (angle = 60, hjust =1))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold"),
+        axis.title.x=element_text(size=13,face="bold"),
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=13,face="bold")
+)
+
+
+#this is doing a statistical test to see the effect of temperature on growth rate under low, intermediate and high iron conditions. 
+vlow <- subset(mergedata, iron == 20)
+
+vlow$iron <- as.character(vlow$iron)
+vlow$Temperature <- as.numeric(as.character(vlow$Temperature))
+anovs <- lm(mumax~Temperature, vlow)
+
+summary(anovs)
+```
+
+Plotting Kfevstemp curves
+```{r}
+summary(monod_0.7C_rfu)
+summary(monod_1C_rfu)
+summary(monod_2.7C_rfu)
+summary(monod_5.7C_rfu)
+
+
+Kfe <- c(28.275, 31.83, 63.11, 66.184)
+Kfe_CI <- c(2.861, 3.196, 15.923, 11.966)
+Temperature <- c(5.7, 2.7, 1, 0.7)
+mu <- c(0.346, 0.271, 0.25, 0.177)
+mu_CI <- c(0.01, 0.007, 0.02, 0.01)
+
+
+Km_temp <- data.frame(Kfe, Temperature, Kfe_CI, mu, mu_CI)
+
+
+
+line_km <- function(x){
+  (57.66*x^-0.447)
+}
+
+line_mu <- function(x){
+  (32.46*x^0.268)
+}
+
+ggplot (Km_temp, aes(x = Temperature, y = Kfe))+
+  geom_point(size=5)+
+  stat_function(fun = line_km, color = 'black', size = 0.8)+
+  stat_function(fun = line_mu, color = "red", size = 0.8)+
+  geom_point(aes( y = mu*150, color = "red", size = 5))+
+  geom_errorbar(aes(ymin = mu*150 - mu_CI*150, ymax = mu*150 +mu_CI*150, color = "red"))+
+  geom_errorbar(aes (ymin = Kfe-Kfe_CI, ymax = Kfe+Kfe_CI))+   
+  scale_y_continuous (sec.axis = sec_axis( ~./150, name = expression(Maximum~growth~rate~(mu[max]~d^-1))))+
+  theme(axis.text.y.right = element_text(angle = 45, hjust=9))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold", size = 16, color = "black"),
+        axis.title.x=element_text(size=22,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 16, color = "black"),
+        axis.title.y=element_text(size=22,face="bold"))+
+  #theme (legend.title = element_text (size = 18),
+        #legend.text = element_text(size = 18))+
+  xlab(expression (Temperature ~(degree*C)))+
+  ylab (expression(K[Fe]~(pMole~Fe~ L^-1)))+
+  theme (legend.position = "none")+
+  theme(panel.grid = element_blank())
+
+  
+```
+
+Plotting my curves vs mono curves with constant Kfe
+```{r}
+monod<- read.csv("monod.csv")
+monod_sub <- melt(monod, id.vars = "Fe")
+
+monod_sub$adjusted <- str_sub(monod_sub$variable, start = -1)
+monod_sub$temperature <- str_sub(monod_sub$variable, start = 2, end = 4)
+
+ggplot (monod_sub, aes (x = Fe, y = value, color = temperature, shape = adjusted))+
+  #geom_point()+
+  geom_line(size = 0.8, aes(linetype = adjusted))+
+scale_color_manual(values = c("black", "orange", "red", "darkred"))+
+  theme_bw()+
+      
+  theme(axis.text.x=element_text(face = "bold", size = 12),
+        axis.title.x=element_text(size=15,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=15,face="bold"))+
+         theme (legend.title = element_text (size = 12),
+                legend.text = element_text(size = 11))+
+ylab ("Growth rate (d-1)")+
+  xlab ("Fe' (pM)")
+```
+
+
+cellsize
+```{r}
+cellsize <- read.csv("LJ_growth-experiment_25mLtubes_1C3C6C_size.csv")
+
+colnames(cellsize) <- as.character(unlist(cellsize[1,]))
+cellsize <- cellsize [-c(1),] 
+cellsize_sub <- cellsize [c(5,6, 7:15, 19:26, 29:36)] 
+cellsize_sub = melt(cellsize_sub, id.vars = c("culturetemp", "daycount"))
+names(cellsize_sub)[4] = "size"
+names(cellsize_sub)[3] = "treatment"
+cellsize_sub$replicate <- str_sub(cellsize_sub$treatment, start=-1) 
+cellsize_sub$totaliron <- str_sub(cellsize_sub$treatment, end=-8) 
+cellsize_sub$totaliron_1 <- str_sub(cellsize_sub$totaliron, start=3) 
+cellsize_sub$treatment <- paste0 (cellsize_sub$totaliron_1,"_",cellsize_sub$replicate,":",cellsize_sub$culturetemp)
+cellsize_sub$size<- as.numeric (cellsize_sub$size)
+cellsize_sub$daycount<- as.numeric (as.character(cellsize_sub$daycount))
+
+cellsize_growth <- merge(cellsize_sub, mergedata, by = "treatment")
+
+cellsize_growth$size<- as.numeric (as.character(cellsize_growth$size))
+cellsize_growth$adjustedsize <- (cellsize_growth$size+49761)/167118
+
+#cellsize_growth <- subset(cellsize_growth, adjustedsize <6.6)
+
+
+#size vs Fe
+##This shows the size relationship with iron and temperature in one figure. 
+cellsize_growth$Temperature<-as.character(cellsize_growth$Temperature)
+cellsize_growth$totaliron_1<-as.character(cellsize_growth$totaliron_1)
+
+png("figure3_size_vs_Fe.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+ggplot(cellsize_growth, aes(x=totaliron_1, y=adjustedsize, color = Temperature))+
+  #geom_point(size = 2, alpha=0.3)+
+  stat_summary(size = 0.5)+
+   ylab(expression (Estimated ~Cell ~Diameter~(mu*m)))+
+xlab (expression (Fe[Total]~ (nMole~L^-1)))+
+  scale_x_discrete (limits = c("3.75", "10", "15", "20", "35", "50", "100", "500"))+
+  scale_color_manual(values = c("black", "orange", "red", "darkred"))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold", color = "black", size = 12),
+        axis.title.x=element_text(size=18,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12, color = "black"),
+        axis.title.y=element_text(size=18,face="bold", color = "black"))+
+  theme(panel.grid = element_blank())+
+  labs(size = 12, col="Temperature (°C)")
+dev.off()
+
+
+#As temperature increases, cell size decreases because of increased division and growth. This causes cells to be more eficcience at taking nutrients, and reduces the nutrient quota
+#This is to plot both Kfe and cell size on one plot to show that Kfe decreases with temperature 
+# Km_temp$Kfe <- as.numeric(Km_temp$Kfe)
+# merged <- merge (Km_temp, cellsize_growth)
+# 
+# ggplot(merged, aes(x=Temperature, y=adjustedsize))+
+#   geom_point(aes(y = Kfe/10, color = "red"))+
+#  scale_y_continuous (sec.axis = sec_axis( ~.*10, name = "Kfe (pM)"))+
+#  geom_errorbar(aes(ymin =Kfe/10-Kfe_CI/10, ymax = Kfe/10+Kfe_CI/10, color = "red"))+
+#  stat_summary(fun.data = "mean_cl_boot", geom="errorbar")+
+#    stat_summary(fun.data = "mean_cl_boot")+
+#    xlab ("Temperature(C)")+
+#   ylab ("Estimated Cell Diameter (um)")+
+#   theme_bw()+
+#   theme(axis.text.x=element_text(face = "bold"),
+#         axis.title.x=element_text(size=13,face="bold"), 
+#         axis.text.y=element_text(face = "bold", size = 12),
+#         axis.title.y=element_text(size=13,face="bold"))+
+#   theme(legend.position = "none")
+#   #grid.arrange(x,y, nrow= 1)
+
+
+
+#size vs temperature
+cellsize_growth$totaliron_1<-as.numeric(as.character(cellsize_growth$totaliron_1))
+cellsize_growth$Temperature<-as.numeric(as.character(cellsize_growth$Temperature))
+
+## his plots shows the change in size with temperature for the various iron concentrations. 
+ggplot(cellsize_growth, aes(x=Temperature, y=adjustedsize))+
+  geom_point(size = 2, alpha=0.8)+
+ # stat_summary(size = 0.5, aes(group = totaliron_1))+
+  stat_summary (aes(group = totaliron_1), geom = "line")+
+  xlab ("Temperature(C)")+
+  ylab ("Estimated Cell Diameter (um)")+
+  scale_color_gradient2(low = "red", high = "blue", trans = "log" )+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold"),
+        axis.title.x=element_text(size=13,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=13,face="bold"))+
+  facet_wrap(~totaliron_1)
+
+#now look at the slope of the effect of temperature on size at each iron concentration. Temperature decreases size more at low iron that it does at high iron. 
+x<- coef(lmList(adjustedsize~Temperature|totaliron_1 , data = cellsize_growth))
+
+x_2 <- data.frame(x)
+x_2 <- data.frame(names = row.names(x), x_2)
+#x_2$names <- as.numeric (as.character(x_2$names))
+#x_2$names <- as.numeric(x_2$names)
+
+
+ggplot (x_2, aes(x = names, y = Temperature))+ 
+  geom_point()+
+  geom_smooth(method = "loes")+
+  theme_bw()+
+  theme(panel.grid = element_blank())+
+  scale_x_discrete (limits = c("10", "15", "20", "35", "50", "100", "500"))+
+ylab(expression (Delta~Size / Delta ~ Temperature))+
+xlab (expression (Fe[Total]~ (nM)))
+ # xlab ("total iron")
+
+
+cellsize_growth$totaliron_1<- as.numeric (as.character(cellsize_growth$totaliron_1))
+
+cellsize_growth$totaliron_1<- as.numeric(as.character(cellsize_growth$totaliron_1))
+
+cellsize_growth$Temperature<- as.numeric(as.character(cellsize_growth$Temperature))
+
+#png("mu_vs_size_facet.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+cellsize_growth_3 <- subset (cellsize_growth, adjustedsize<6.6)
+ggplot(cellsize_growth_3, aes(x=adjustedsize, y=mumax, color = Temperature))+
+  geom_point(size = 3)+
+  scale_color_gradient(high = "red", low = "blue")+
+  theme_bw()+
+   stat_smooth(method = lm)+
+   ylab(expression (Growth~rate~(mu*d^-1)))+
+xlab (expression (Cell~diameter~(mu*m)))+
+   theme(axis.text.x=element_text(face = "bold", size = 11, color = "black"),
+        axis.title.x=element_text(size=15,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 11, color = "black"),
+        axis.title.y=element_text(size=15,face="bold")
+        )+
+  #scale_x_reverse()+
+  facet_wrap(~totaliron_1, ncol = 3)
+#dev.off()
+
+
+x<- coef(lmList(mumax~adjustedsize|totaliron_1 , data = cellsize_growth_3))
+x_2 <- data.frame(x)
+x_2 <- data.frame(names = row.names(x), x_2)
+x_2$names <- as.numeric (as.character(x_2$names))
+
+#at higher temperatures, cells divide faster, which make them smaller. Smaller cells are better at absorbing nutrients, so thet grow faster. So, at high iron, the temperature induced change in cell size, causes a bigger effect on growth.  
+
+#png("deltagrowth_persize_per_iron.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+ggplot (x_2, aes(x = names, y = adjustedsize*-1))+ 
+ geom_smooth(method = "lm", color = "black")+
+  geom_point(size = 3)+
+ ylab(expression (Delta~mu~d^-1 / Delta ~ cell~size))+
+xlab (expression (Fe[Total]~ (nM)))+
+  theme_bw()+
+  theme(panel.grid = element_blank())+
+  theme(axis.text.x=element_text(face = "bold", size = 13, color = "black"),
+        axis.title.x=element_text(size=15,face="bold", color = "black"), 
+        axis.text.y=element_text(face = "bold", size = 13, colour = "black"),
+        axis.title.y=element_text(size=15,face="bold", color = "black"))+
+ scale_x_log10()
+
+#dev.off()
+
+
+#--------------------------
+
+cellsize_growth_3 <- subset (cellsize_growth, adjustedsize<6.6)
+
+X<- ggplot(cellsize_growth_3, aes(x=Temperature, y=adjustedsize, color = Temperature))+
+  geom_point(size = 3)+
+  scale_color_gradient(high = "red", low = "blue")+
+  theme_bw()+
+  stat_summary(size = 5)+
+   stat_smooth(method = lm)+
+  # ylab(expression (Growth~rate~(mu*d^-1)))+
+#xlab (expression (Temperature~(degree*C)))+
+   theme(axis.text.x=element_text(face = "bold", size = 11, color = "black"),
+        axis.title.x=element_text(size=15,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 11, color = "black"),
+        axis.title.y=element_text(size=15,face="bold")
+        )+
+  facet_wrap(~totaliron_1, ncol = 3)
+ggplotly(X)
+
+
+
+
+x<- coef(lmList(adjustedsize~Temperature|totaliron_1 , data = cellsize_growth_3))
+x_2 <- data.frame(x)
+x_2 <- data.frame(names = row.names(x), x_2)
+x_2$names <- as.numeric (as.character(x_2$names))
+
+ggplot (x_2, aes(x = names, y = Temperature))+ 
+  geom_smooth( color = "black")+
+  geom_point(size = 3)+
+  ylab(expression (Delta~Size / Delta ~ Temperature))+
+  xlab (expression (Fe[Total]~ (nM)))+
+  theme_bw()+
+  theme(panel.grid = element_blank())+
+  theme(axis.text.x=element_text(face = "bold", size = 13),
+        axis.title.x=element_text(size=13,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 13),
+        axis.title.y=element_text(size=13,face="bold"))+
+  scale_x_log10()
+
+ggplotly (y)
+
+
+x<- c(10, 15, 20, 35, 50, 100, 500)
+y <- c(4.4, 4.7, 4.6, 4.6, 3.5, 2.9, 1.75)
+data <- data.frame(x,y)
+
+png("figure4_reduction-insize_vs_Fe.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+ggplot (data, aes(x = x, y = y))+
+  geom_point(size = 3)+
+  scale_x_log10()+
+  theme_bw()+
+  xlab(expression (Fe[Total]~(nMole~L^-1)))+
+  ylab(expression ('%'~Reduction~"in"~ECD~per~1*degree*C))+
+  theme(axis.text.x=element_text(face = "bold", size = 12, color = "black"),
+        axis.title.x=element_text(size=18,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12, color = "black"),
+        axis.title.y=element_text(size=18,face="bold"))+
+   theme(panel.grid = element_blank())
+dev.off()
+---------------------
+
+```
+
+
+
+
+cellsize over time
+```{r}
+#cellsize over time for the 1C final 
+sizeovertime <- read.csv("sizeovertime_1C.csv")
+sizeovertime_sub <- sizeovertime [c(5,6,8:15, 19, 21:26)]
+
+colnames(sizeovertime_sub) <- as.character(unlist(sizeovertime_sub[1,]))
+sizeovertime_sub <- sizeovertime_sub [-c(1),]
+
+sizeovertime_sub = melt(sizeovertime_sub, id.vars = c("daycount", "culturetemp"))
+names(sizeovertime_sub)[3] = "treatment"
+names(sizeovertime_sub)[4] = "size"
+
+sizeovertime_sub$replicate <- str_sub(sizeovertime_sub$treatment, start=-1) 
+
+sizeovertime_sub$totaliron <- str_sub(sizeovertime_sub$treatment, end=-8) 
+
+sizeovertime_sub$totaliron_1 <- str_sub(sizeovertime_sub$totaliron, start=3) 
+
+
+sizeovertime_sub$treatment <- paste0 (sizeovertime_sub$totaliron_1,"_",sizeovertime_sub$replicate,":",sizeovertime_sub$culturetemp)
+
+
+sizeovertime_sub$size<- as.numeric (sizeovertime_sub$size)
+sizeovertime_sub$daycount<- as.numeric (as.character(sizeovertime_sub$daycount))
+
+sizeovertime_sub$totaliron<- as.numeric (as.character(sizeovertime_sub$totaliron))
+
+sizeovertime_sub <- merge(sizeovertime_sub, mergedata_sub, by = "treatment")
+
+ggplot(sizeovertime_sub, aes(x=daycount, y=size, color = totaliron_1))+
+  geom_point(size = 3)+
+ # scale_color_continuous()+
+  stat_smooth(method ="auto", span = 10)+
+  xlab ("Time (days)")+
+ ylab ("Relative cell size (forward scatter)")+
+    theme_bw()+
+  theme(axis.text.x=element_text(face = "bold"),
+        axis.title.x=element_text(size=13,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=13,face="bold")
+        )
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+fv/fm
+```{r}
+fvfm <- read.csv("LJ_1C3C6C_fvfm.csv", header = TRUE)
+
+colnames(fvfm) <- as.character(unlist(fvfm[1,]))
+fvfm <- fvfm [-c(1),] 
+fvfm_sub <- fvfm [c(5, 7:38)] 
+fvfm_sub = melt(fvfm_sub, id.vars = c("culturetemp"))
+names(fvfm_sub)[2] = "treatment"
+names(fvfm_sub)[3] = "fvfm"
+fvfm_sub$fvfm<- as.numeric (fvfm_sub$fvfm)
+
+
+fvfm_sub$replicate <- str_sub(fvfm_sub$treatment, start=-1, end = -1)
+fvfm_sub$treatment1 <- str_sub(fvfm_sub$treatment, end=-3)
+
+fvfm_fe <- fvfm_sub[c(1:27, 37:60, 67:90),]
+fvfm_fe$treatment <- str_sub(fvfm_fe$treatment1, end=-6)
+fvfm_fe$treatment2 <- str_sub(fvfm_fe$treatment, start=3)
+
+fvfm_fe$treatment <- paste0 (fvfm_fe$treatment2,"_",fvfm_fe$replicate,":",fvfm_fe$culturetemp)
+
+fvfm_fe_1 <- merge(fvfm_fe, mergedata_sub, by = "treatment")
+
+
+ ggplot(fvfm_fe_1, aes(x= Fee, y=fvfm, color = Temperature))+
+  #geom_point(size = 3)+
+  stat_summary(size=1)+
+   scale_color_manual(values = c("black", "orange", "red"))+
+   #scale_x_discrete (limits = c("0", "3.75", "10", "15", "20", "35", "50", "100", "500"))+
+    theme_bw()+
+    labs(col="Temperature (°C)")+
+  ylab(expression (F[v]/F[m]))+
+xlab (expression ("Fe'"~(pMole~L^-1)))+
+  theme_bw()+
+  theme(panel.grid = element_blank())+
+  theme(axis.text.x=element_text(face = "bold", size = 18, color = "black"),
+        axis.title.x=element_text(size=22,face="bold", color = "black"), 
+        axis.text.y=element_text(face = "bold", size = 18, colour = "black"),
+        axis.title.y=element_text(size=22,face="bold", color = "black"))+
+  scale_x_log10()+
+   scale_y_continuous(limits = c(0,0.6),breaks = seq(0,6, by = 0.1))
+   
+
+
+ summary(fvfm_fe_1)
+
+fvfm_fe_1$Temperature<- as.numeric(as.character(fvfm_fe_1$Temperature))
+x <- lm (fvfm ~log(Fee)*Temperature, data = fvfm_fe_1)  
+summary(x)
+
+#dev.off()
+```
+
+
+
+Sigma
+```{r}
+sigma <- read.csv("LJ_1C3C6C_sigma.csv", header = TRUE)
+
+colnames(sigma) <- as.character(unlist(sigma[1,]))
+sigma <- sigma [-c(1),] 
+sigma_sub <- sigma [c(5, 7:38)] 
+sigma_sub = melt(sigma_sub, id.vars = c("culturetemp"))
+names(sigma_sub)[2] = "treatment"
+names(sigma_sub)[3] = "sigma"
+sigma_sub$sigma<- as.numeric (sigma_sub$sigma)
+
+
+sigma_sub$replicate <- str_sub(sigma_sub$treatment, start=-1, end = -1)
+sigma_sub$treatment1 <- str_sub(sigma_sub$treatment, end=-3)
+
+sigma_fe <- sigma_sub[c(1:75),]
+sigma_fe$treatment <- str_sub(sigma_fe$treatment1, end=-6)
+sigma_fe$treatment2 <- str_sub(sigma_fe$treatment, start=3)
+
+sigma_fe$treatment <- paste0 (sigma_fe$treatment2,"_",sigma_fe$replicate,":",sigma_fe$culturetemp)
+
+sigma_fe_1 <- merge(sigma_fe, mergedata_sub, by = "treatment")
+
+
+ ggplot(sigma_fe_1, aes(x= treatment1, y=sigma, color = treatment2))+
+  geom_point(size = 3)+
+  xlab ("Fe'(pM)")+
+ ylab ("Fv/Fm")+
+ # stat_summary()+
+  # scale_color_manual(values = c("black", "orange", "red"))+
+   #scale_x_discrete (limits = c( "20","50", "100"))+
+    theme_bw()+
+    labs(col="Temperature (°C)")+
+  ylab(expression (Absorption~cross~section))+
+xlab (expression ("Fe'"~(pMole~L^-1)))+
+  theme_bw()+
+  theme(panel.grid = element_blank())+
+  theme(axis.text.x=element_text(face = "bold", size = 12, color = "black"),
+        axis.title.x=element_text(size=18,face="bold", color = "black"), 
+        axis.text.y=element_text(face = "bold", size = 12, colour = "black"),
+        axis.title.y=element_text(size=18,face="bold", color = "black"))+
+     facet_wrap(~treatment2)
+   
+
+ 
+ 
+ x <- subset(sigma_fe_1, treatment2 == 10| treatment2==15|treatment2==20)
+ 
+ 
+  
+ ggplot(sigma_fe_1, aes(x= treatment2, y=sigma, color = culturetemp))+
+  geom_point(size = 4)+
+  scale_color_manual(values = c("black", "orange", "red"))+
+   scale_x_discrete (limits = c("10","15","20","50", "100","500"))+
+   #scale_x_discrete (limits = c( "10","500", "15", "20", "100"))+
+    #scale_color_continuous()+
+    #labs(col="Temperature (°C)")+
+  #ylab(expression (Absorption~cross~section))+
+#xlab (expression ("Fe'"~(pMole~L^-1)))+
+  theme_bw()+
+  theme(panel.grid = element_blank())+
+  theme(axis.text.x=element_text(face = "bold", size = 12, color = "black"),
+        axis.title.x=element_text(size=18,face="bold", color = "black"), 
+        axis.text.y=element_text(face = "bold", size = 12, colour = "black"),
+        axis.title.y=element_text(size=18,face="bold", color = "black"))
+
+
+ summary(sigma_fe_1)
+
+x$Temperature<- as.numeric(as.character(x$Temperature))
+sigma_fe_1$Temperature<- as.numeric(as.character(sigma_fe_1$Temperature))
+
+z <- lm (sigma ~Temperature*treatment2, data = sigma_fe_1)  
+summary(z)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Organize the dataframes and use long formart
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+#rfu_sub <- rfu [c(5,6, 9:40)] 
+rfu_sub <- rfu [c(5,6, 9:17, 21:29)] 
+rfu_sub = melt(rfu_sub, id.vars = c("culturetemp", "daycount"))
+names(rfu_sub)[4] = "RFU"
+names(rfu_sub)[3] = "treatment"
+rfu_sub$RFU<- as.numeric (rfu_sub$RFU)
+rfu_sub$daycount<- as.numeric (as.character(rfu_sub$daycount))
+```
+
+Make RFU plots to show growth curves of different treatments 
+```{r}
+RFU_plot<- ggplot(rfu_sub, aes(x= daycount, y=RFU,color = culturetemp, group= interaction(treatment, culturetemp)))+
+  geom_point(size = 1)+
+  geom_line()+
+  xlab ("Days Since Inoculation")+
+  ylab ("RFU")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 50, vjust = 1.0, hjust = 1.0))+
+ scale_y_log10()+
+  theme_bw()
+RFU_plot + facet_wrap(~treatment, ncol = 3)
+
+ggplot(rfu_sub, aes(x= daycount, y=RFU ,color = culturetemp, group = interaction(treatment,culturetemp)))+
+  geom_point(size = 1)+
+  geom_line()+
+  xlab ("Days Since Inoculation")+
+ ylab ("RFU")+
+  #theme(plot.title = element_text(hjust = 0.5))+
+  #theme(axis.text.x = element_text(angle = 50, vjust = 1.0, hjust = 1.0))+
+ # geom_smooth(span = 0.8, se = FALSE)+
+  #scale_y_log10()+
+  theme_bw()
+
+```
+
+
+
+
+
+
+
+
+```{r}
+fit_rfu <- all_easylinear(RFU~daycount |treatment, data = rfu_sub)
+
+fit_rfu <- all_easylinear(RFU~daycount |treatment+culturetemp, data = rfu_sub)
+
+coef(fit_rfu)
+summary(fit_rfu)
+rsquared(fit_rfu)
+par(mfrow = c(3,8)) 
+plot(fit_rfu, log = "y")
+
+growthrate_rfu<- coef(fit_rfu) %>%  data.frame 
+growthrate_rfu <- data.frame (treatment = row.names (growthrate_rfu), growthrate_rfu)
+rownames(growthrate_rfu) <- c()
+growthrate_rfu$treatment <- factor (growthrate_rfu$treatment, levels = growthrate_rfu$treatment)
+
+growthrate_rfu$Temperature <- str_sub(growthrate_rfu$treatment, start=-2)
+
+
+growthrate_rfu$replicate <- str_sub(growthrate_rfu$treatment, start = -4, end = -4)
+#growthrate_rfu$replicate <- str_sub(growthrate_rfu$treatment, start = -1, end = -1)
+
+
+#growthrate_rfu$treatment1 <- str_sub(growthrate_rfu$treatment, end =-3)
+growthrate_rfu$treatment1 <- str_sub(growthrate_rfu$treatment, end =-6)
+
+
+
+#RFU
+
+ggplot (growthrate_rfu, aes (x = treatment1, y = mumax , color = Temperature))+
+  geom_point (size = 3)+
+  #scale_y_continuous(breaks = seq(0, 0.5, 0.05))+
+  ylab ("growth rate (d-1)")+
+  xlab ("Fe and Mn Concentrations (nM)")+
+  scale_color_manual(values = c("black", "red"))+
+  scale_x_discrete (limits = c("Fe0_Mn48", "Fe3.75_Mn48", "Fe10_Mn48", "Fe15_Mn48","Fe20_Mn48", "Fe35_Mn48", "Fe50_Mn48", "Fe100_Mn48", "Fe500_Mn48"))+
+  theme(axis.text.x = element_text (angle = 60, hjust =1))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold"),
+        axis.title.x=element_text(size=13,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=13,face="bold")
+        
+        )
+
+#png("growthrateMn.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+ggplot (growthrate_rfu, aes (x = treatment1, y = mumax))+ #color = Temperature))+
+  geom_point (size = 3)+
+  scale_y_continuous(breaks = seq(0, 0.4, 0.05))+
+  ylab ("growth rate (d-1)")+
+  xlab ("Fe and Mn Concentrations (nM) ")+
+    scale_color_manual(values = c("black", "red"))+
+  scale_x_discrete (limits = c("Fe0_Mn0", "Fe0_Mn48", "Fe500_Mn0", "Fe500_Mn1", "Fe500_Mn48"))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold", size =12),
+        axis.title.x=element_text(size=15,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 12),
+        axis.title.y=element_text(size=15,face="bold"))+
+  theme (legend.title = element_text (size = 12),
+                legend.text = element_text(size = 11))
+#dev.off()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Other models
+
+```{r}
+
+#trying to get an auto monod function fit: 
+
+SSmicmen(monod3C_rfu$treatment, Vm=0.3, K=10)
+getInitial(mumax ~ SSmicmen(treatment, Vm, K), data = monod3C_rfu)
+
+
+f <- nls(mumax ~ SSmicmen(treatment, Vm, K), data=monod1C)
+
+
+
+
+
+#````````````````````````````````````````````````#
+ 
+bannister_3C <- nls(mumax ~ Vm * treatment/(K^b+treatment^b)^(1/b), data = monod3C, 
+                    start = list(K=max(monod3C$mumax)/2, b= c(1.0001:3) ,Vm = max(monod3C$mumax)))
+
+
+
+
+
+ # bannister_1C <- nls(mumax ~ Vm * treatment/(K^b+treatment^b)^(1/b), data = monod1C, 
+ #                    start = list(K=max(monod1C$mumax)/2, b= c(1.0001:3) ,Vm = max(monod1C$mumax)))
+
+ 
+ auto_1C <- nls(mumax ~ SSgompertz(treatment, Asym,b2,b3), data=monod3C)
+summary(auto_1C)
+ 
+
+
+
+ 
+ 
+ plot(mumax~treatment, data =monod3C)
+curve(predict(auto_1C, newdata = data.frame(treatment = x)), add = TRUE)
+predict(auto_1C,0.11234 )
+
+
+xval <- approx(x = fit$fitted.values, y = x, xout = 30)$y
+
+
+
+# monod_3a<- function(x){ 0.3107735 + (0.04826072 - 0.3107735)/(1 + (x/13.96488)^1.675368)
+# }
+
+#Km <- 11.18
+
+
+bannister3C_curve <- function(x){ 
+  (0.31186*x)/((15.2716^1.5+x^1.5)^0.66666667)
+}
+
+
+
+ggplot (x, aes (x = as.integer(treatment), y = mumax, color = temp,  group = temp))+
+  geom_point (size = 3)+
+ scale_x_continuous(breaks = seq(0,500, by = 20 ))+
+    scale_y_continuous(limits = c(0, 0.4))+
+ stat_function(fun = monod_3, color = 'blue')+
+  stat_function(fun = monod_1, color = 'red')+
+  ylab("growth rate d-1 (rfu)")+
+  xlab("Total Fe, nM")+
+  #scale_x_log10()+
+  theme_bw()
+
+```
+
+
+
+cellcount vs RFU test 
+```{r}
+
+  z <- dplyr::filter (x, grepl("3C",temp))
+  countRFU <- merge (z, y, by ="treatment")
+  countRFU_sub <- countRFU [c(1,4,9)]
+  names(countRFU_sub) <- c("treatment", "RFU", "cellcount")
+  
+countRFU_sub = melt(countRFU_sub, id.vars = c("treatment"))
+
+
+
+ggplot (countRFU_sub, aes (x = treatment, y = value, color = variable))+
+  geom_point (size = 3)+
+  geom_line ()+
+    scale_y_continuous(limits = c(0, 0.3))+
+  #geom_smooth(span = 0.8, se = FALSE)+
+  scale_x_discrete (limits = c("Fe0_Mn48", "Fe2.5_Mn48", "Fe5_Mn48", "Fe10_Mn48", "Fe20_Mn48", "Fe50_Mn48", "Fe100_Mn48", "Fe500_Mn48"))+
+  theme_bw()
+
+
+
+   ggplot (countRFU_sub, aes (x = treatment, y = value, color = variable))+
+  geom_point (size = 3)+
+  #geom_line ()+
+    scale_y_continuous(limits = c(0, 0.3))+
+  #geom_smooth(span = 0.8, se = FALSE)+
+  scale_x_discrete (limits = c("Fe0_Mn0", "Fe0_Mn48", "Fe500_Mn0", "Fe500_Mn2.5", "Fe500_Mn48"))+
+  theme_bw()
+
+
+
+
+```
+
+
+
+```{r}
+
+cellcount_plot<- ggplot(cellcount_sub, aes(x=daycount, y=cellcount ,color = culturetemp))+ 
+geom_point(size = 1)+
+ geom_line(size = 0.5)+
+xlab ("Days Since Inoculation")+
+ylab ("Cells/uL ")+
+theme(plot.title = element_text(hjust = 0.5))+
+theme(axis.text.x = element_text(angle = 50, vjust = 1.0, hjust = 1.0))+
+  #geom_smooth(span = 0.8, se = FALSE)+
+scale_y_log10()+
+theme_bw()
+cellcount_plot + facet_wrap(~treatment, ncol = 3)
+
+
+ggplot(cellcount_sub, aes(x=daycount, y=cellcount ,color = culturetemp, group= culturetemp))+ 
+geom_point(size = 1)+
+ #geom_line(size = 0.5)+
+xlab ("Days Since Inoculation")+
+ylab ("Cells/uL")+
+theme(plot.title = element_text(hjust = 0.5))+
+theme(axis.text.x = element_text(angle = 50, vjust = 1.0, hjust = 1.0))+
+  geom_smooth(span = 0.8, se = FALSE)+
+scale_y_log10()+
+theme_bw()
+
+#  ggplot(rfu_sub, aes(x=daycount, y=RFU ,color = treatment, shape = culturetemp))+ #group= #culturetemp))+
+# geom_point(size = 1)+
+#   geom_line(size = 0.5)+
+# xlab ("Days Since Inoculation")+
+# ylab ("Relative Fluorescence Units (RFU)")+
+#  theme(plot.title = element_text(hjust = 0.5))+
+#  theme(axis.text.x = element_text(angle = 50, vjust = 1.0, hjust = 1.0))+
+#    #geom_smooth(span = 0.8, se = FALSE)+
+#  scale_y_log10()+
+#  theme_bw()
+
+
+```
+
+
+
+
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data_tube <- read.csv("LJ_2018_07_24_25mLtubes.csv")
+
+rfu <- data_tube [c(6,9:16 )] 
+
+rfu = melt(rfu, id.vars ="daycount" )
+rfu <- separate(rfu, col = variable, into = c("Treatment", "Replicate"))
+names(rfu)[4] = "RFU"
+
+
+ggplot(rfu, aes(x=daycount, y=RFU, colour = Treatment, shape = Replicate ))+
+geom_point(size = 3)+
+ # geom_line(size = 1.4)+
+  scale_color_manual(values = c("red", "black"))+
+stat_summary(fun.y = mean, geom = "line",aes(group =Treatment, color = Treatment), size = 1.2)+
+#stat_summary(fun.data =  mean_se, geom = "errorbar", colour = "black")+
+xlab ("Days Since Inoculation")+
+ylab ("RFU")+
+ggtitle("Growth Curves of +/- Fe Cultures in 28 mL Tubes. Transfer #1")+
+theme_bw()+
+theme(plot.title = element_text(hjust = 0.5))+
+theme(axis.text.x = element_text(angle = 50, vjust = 1.0, hjust = 1.0))+
+guides(colour=guide_legend(order = 1))+
+scale_color_manual(name = "Treatment", labels = c("+Fe", "-Fe"), values = c("red", "black"))+
+#geom_jitter(width = 0.11, size =2)+
+ #stat_summary(fun.y = mean, geom = "line", size = 12, alpha = 0.2,  aes(group = Treatment ))+
+  #scale_x_continuous(limits = c(0,5))
+  #scale_x_continuous(breaks = rfu$daycount)
+  scale_x_continuous(breaks = seq(min(rfu$daycount), max(rfu$daycount), by = 1))+
+  theme( legend.background = element_rect(color = "black"))+
+  stat_summary(fun.data = mean_se, geom= "ribbon", aes( group = Treatment, color = NA, fill = Treatment), alpha = 0.3)+
+  scale_fill_manual(values = c("Fe" = "red", "noFe"="black"))+
+  guides (fill = FALSE)+
+   #scale_y_log10()
+scale_y_continuous(breaks= seq(0,400, by=10))
+  
+
+  #guides(shape = FALSE)
+  #guides(color = FALSE)
+#labs(shape = "bdbd")
+
+
+  #legend.position = c(0.1,0.65)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Cellcount stuff 
+```{r}
+colnames(cells) <- as.character(unlist(cells[1,]))
+cells<- cells[-c(1),]
+cellcount_sub <- cells [c(5,6, 9:40)]
+cellcount_sub = melt(cellcount_sub, id.vars = c("culturetemp", "daycount"))
+names(cellcount_sub)[4] = "cellcount"
+names(cellcount_sub)[3] = "treatment"
+cellcount_sub$cellcount<- as.numeric (as.character(cellcount_sub$cellcount))
+cellcount_sub$daycount<- as.numeric (as.character(cellcount_sub$daycount))
+
+
+
+
+cellcount_plot <- ggplot(cellcount_sub, aes(x= daycount, color = culturetemp, y=cellcount, group = interaction(treatment, culturetemp)))+
+  geom_point(size = 1)+
+  geom_line()+
+  xlab ("Days Since Inoculation")+
+  ylab ("Cells uL ")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 50, vjust = 1.0, hjust = 1.0))+
+ scale_y_log10()+
+  theme_bw()
+cellcount_plot + facet_wrap(~treatment, ncol = 3)
+
+ggplot(cellcount_sub, aes(x = daycount, color = culturetemp, y=cellcount, group = interaction (treatment, culturetemp)))+
+  geom_point(size = 1)+
+  geom_line()+
+  xlab ("Days Since Inoculation")+
+ ylab ("Cells/uL")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 50, vjust = 1.0, hjust = 1.0))+
+ #geom_smooth(span = 0.8, se = FALSE)+
+  #scale_y_log10()+
+  theme_bw()
+
+
+fit_rfu <- all_easylinear(cellcount~daycount |treatment+culturetemp, data = cellcount_sub)
+
+```
+
+
+```{r}
+fit_cellcount <- all_easylinear( cellcount~daycount | treatment+culturetemp, data = cellcount_sub )
+
+rsquared(fit_cellcount)
+par(mfrow = c(3,8)) 
+plot(fit_cellcount, log = "y")
+
+
+y<- coef(fit_cellcount) %>%  data.frame 
+y <- data.frame (treatment = row.names (y), y)
+rownames(y) <- c()
+y$treatment <- factor (y$treatment, levels = y$treatment)
+
+
+y$temp <- str_sub(y$treatment, start = -2)
+y$treatment <- str_sub(y$treatment, end=-4)
+
+#y$temp <- str_sub(y$treatment, start = -2)
+#y$treatment <- str_sub(y$treatment, end=-4)
+
+ggplot (y, aes (x = treatment, y = mumax, color = temp))+
+  geom_point (size = 3)+
+  geom_line ()+
+    scale_y_continuous(breaks = seq(0, 0.35, 0.05))+
+  #geom_smooth(span = 0.8, se = FALSE)+
+   ylab ("growth rate d-1 (cell count)")+
+  scale_x_discrete (limits = c("Fe0_Mn48", "Fe2.5_Mn48", "Fe5_Mn48", "Fe10_Mn48", "Fe20_Mn48", "Fe50_Mn48", "Fe100_Mn48", "Fe500_Mn48"))+
+  theme_bw()
+
+   ggplot (y, aes (x = treatment, y = mumax, color = temp))+
+  geom_point (size = 3)+
+  #geom_line ()+
+    scale_y_continuous(breaks = seq(0, 0.35, 0.05))+
+  #geom_smooth(span = 0.8, se = FALSE)+
+      ylab ("growth rate d-1 (cell count)")+
+  scale_x_discrete (limits = c("Fe0_Mn0", "Fe0_Mn48", "Fe500_Mn0", "Fe500_Mn2.5", "Fe500_Mn48"))+
+  theme_bw()
+
+# https://cran.r-project.org/web/packages/growthrates/vignettes/Introduction.html
+```
+
+
+```{r}
+cellcount_monod <- cellcount [c(5,6, 9:16)]
+names(cellcount_monod)<- c("culturetemp", "daycount", "0", "2.5", "5", "10", "20", "50", "100", "500")
+
+cellcount_monod_sub <- melt (cellcount_monod, id.vars = c("daycount", "culturetemp"))
+names(cellcount_monod_sub) <- c("daycount", "culturetemp", "Fe", "cellcount")
+
+fit <- all_easylinear( cellcount~daycount |Fe+culturetemp, data = cellcount_monod_sub)
+
+
+
+y<- coef(fit) %>%  data.frame 
+y <- data.frame (treatment = row.names (y), y)
+rownames(y) <- c()
+y$treatment <- factor (y$treatment, levels = y$treatment)
+y$temp <- str_sub(y$treatment, start = -2)
+y$treatment <- str_sub(y$treatment, end=-4)
+
+ggplot (y, aes (x = as.integer(treatment), y = mumax, color = temp, group = temp))+
+  geom_point (size = 3)+
+  geom_line ()+
+  scale_x_continuous(breaks = seq(0,500, by =20 ))+
+    scale_y_continuous(limits = c(0, 0.45))+
+  ylab("cell count growth rate d-1")+
+  xlab ("Total [Fe]")+
+ #stat_smooth(formula = x~log(y) )
+  theme_bw()
+  #stat_function(fun = a_formula)
+```
+
+
+
+
