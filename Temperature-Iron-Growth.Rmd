@@ -7,20 +7,22 @@ require(reshape2)
 require(tidyr)
 require(Hmisc)
 require(data.table)
-require (plotly)
+require(plotly)
 require(growthrates)
 require(lattice)
-require (stringr)
+require(stringr)
 require(drc)
 require(nlstools)
 library(nls2)
 library(gridExtra)
 library(nlme)
 library(ggstance)
+library(ggpubr)
+library(plotly)
 setwd("C:/Users/Loay Jabre/Desktop/PhD/Growth Experiment/RFU-growth-experiment/GrowthPaper")
 #require (tidyverse)
 ```
-  
+
 Calculating efree iron (Fe') concentrations: 
 Total iron, AKA total amount of iron you add to the media with EDTA is different than Fe', AKA free iron, AKA inorganic iron that is available for   phytoplankton to grow. You can calculate Fe' from total iron, if you know the temperature, light level, pH, number of light hours etc.. This is a difficult calculations, and there are many assumptions to make, because the dissociation constants are not measured experimentally at the low temperatures temperatures that Fragilariopsis grows at. So, using extrapolations from published literature, we can do the following: 
 
@@ -132,9 +134,6 @@ ggplot (xdata, aes( x = Temperature, y = z))+
   ylab("Log Khv (dissociation constant in the light)")
 
 
-
-
-
 #Now we can use that linear model to calculate Fe' in media
 
 #Enter the total Fe concentrations here (Mol/L). We are assuming that FeEDTA = totalFe
@@ -156,10 +155,8 @@ Ihv <- 50
 #enter the number of light hours per day (i.e. 24 = constant light)
 h <- 22
 
-#Kd is the dissociation constant in the dark. This is indepdnet of temperature. 
+#Kd is the dissociation constant in the dark. This is indepdnet of temperature and will not change. 
 Kd <- 9.5499E-8
-
-
 
 
 iron <- data.frame(EDTA, FeEDTA, Kd, Ihv)
@@ -205,9 +202,8 @@ scale_x_log10()
  
 Import RFU and make sure headings are good
 ```{r}
-
 rfu <- read.csv("LJ_alltemps_RFU.csv", header = TRUE )
-  
+
 colnames(rfu) <- as.character(unlist(rfu[1,]))
 rfu <- rfu [-c(1),] 
 ```
@@ -272,7 +268,9 @@ names(rfu_monod)<- c("culturetemp", "daycount", "0_A","3.75_A", "10_A", "15_A", 
 
 rfu_monod_sub <- melt (rfu_monod, id.vars = c("daycount", "culturetemp"))
 
+
 names(rfu_monod_sub) <- c("daycount", "culturetemp", "Fe", "RFU")
+
 
 
 
@@ -285,12 +283,14 @@ rfu_monod_sub <- na.omit(rfu_monod_sub)
 
 monod_fit_RFU <- all_easylinear( RFU~daycount |Fe+culturetemp, data = rfu_monod_sub)
 
+
+
 #the model above calculates growth rate by fitting a linear model to the exponential groth curve. Below are the parameters and outputs if interested
 coef(monod_fit_RFU)
 summary(monod_fit_RFU)
 #rsquared(monod_fit_RFU)
-#par(mfrow = c(3,8)) 
-#plot(monod_fit_RFU, log = "y")
+par(mfrow = c(3,8)) 
+plot(monod_fit_RFU, log = "y")
 
 #taking the output of the linear model and putting it into a dataframe
 monod_rfu<- coef(monod_fit_RFU ) %>%  data.frame 
@@ -302,6 +302,26 @@ monod_rfu$culturetemp <- str_sub(monod_rfu$treatment, start = -4)
 monod_rfu$replicate <- str_sub(monod_rfu$treatment, start=-6, end = -6)
 monod_rfu$iron <- str_sub(monod_rfu$treatment, end=-8)
 monod_rfu$iron<- as.numeric (monod_rfu$iron)
+
+
+
+
+# #Lena's plot
+# ggplot (monod_rfu, aes (x = treatment, y = mumax))+
+#   geom_point (size = 5, alpha = 0.6)+
+#   #scale_y_continuous(breaks = seq(0, 0.4, 0.05))+
+#   ylab ("Growth rate (d-1)")+
+#   xlab ("Treatment")+
+#   scale_x_discrete(limits = c("noMnnoFe", "noMn", "noFe", "replete"))+
+#   #scale_color_gradient2(low = blues9, mid = "Orange", high = "red")+
+#   #scale_color_manual(values = c("blue", "black","orange" ,"red", "darkred"))+
+#   #theme(axis.text.x = element_text (angle = 60, hjust =1))+
+#   theme_bw()+
+#   theme(axis.text.x=element_text(face = "bold"),
+#         axis.title.x=element_text(size=13,face="bold"),
+#         axis.text.y=element_text(face = "bold", size = 12),
+#         axis.title.y=element_text(size=13,face="bold")
+# )
 
 
 
@@ -317,8 +337,14 @@ mergedata_sub$Temperature<- as.character (mergedata_sub$Temperature)
 #convert [Fe'] from mol L-1 to pM L-1
 mergedata_sub$Fee <- mergedata_sub$Fe*1000000000000
 
+
+
+
+
+
+
 #plot against Fe'
-ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = Temperature))+
+x<- ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = Temperature))+
   geom_point (size = 3, alpha = 0.6)+
   scale_y_continuous(breaks = seq(0, 0.4, 0.05))+
   ylab ("Growth rate (d-1)")+
@@ -334,7 +360,7 @@ ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = Temperature))+
 )
 
 
-
+ggplotly(x)
 #here, we can delete any datapoints we don't want
 
 #for example, I don't want the outlier in 1C at 500nM 
@@ -531,6 +557,9 @@ line_mu <- function(x){
   (0.1781*x^0.381)*150
 }
 
+#Or this logarithmic function. 
+#y = 0.096ln(x) + 0.1745
+
 
 #png("figure2_mu&Kfe-vs-temp.png", width=45*0.75, height=23*0.75, units="cm", res=900)
 ggplot (Km_temp, aes(x = Temperature, y = Kfe))+
@@ -555,6 +584,38 @@ ggplot (Km_temp, aes(x = Temperature, y = Kfe))+
   theme(panel.grid = element_blank())
 
   #dev.off()
+
+
+
+
+
+
+#Stats
+# test effects of iron and temperature on chla
+#test anova assumptions: assumptions were not met. 
+
+
+
+
+#using the ggpubr package, we check for normality:
+ggdensity(Km_temp$mu)
+#this shows whether the data are normal/bellshaped. in this case they are not
+
+ggqqplot(chla_aov$value) #this shows whether data follow reference line. We have some outliers. 
+shapiro.test(chla_aov$value)
+#the output for the shapiro test shows that the chl-a data are not normally distributed (p value is <0.05, which means data violate normality)
+
+
+#an alternative to anova , a non-parametric test would be the kruskal test
+kruskal.test(Kfe~Temperature, Km_temp)
+kruskal.test(value~iron, chla)
+
+x<- aov(Kfe~Temperature, Km_temp)
+summary(x)
+
+
+
+
 ```
 
 Plotting my curves vs mono curves with constant Kfe
@@ -699,7 +760,7 @@ ggplot(cellsize_growth_3, aes(x=adjustedsize, y=mumax, color = Temperature))+
   theme_bw()+
    stat_smooth(method = lm)+
    ylab(expression (Growth~rate~(mu*d^-1)))+
-xlab (expression (Temperature))+
+xlab (expression (Size))+
    theme(axis.text.x=element_text(face = "bold", size = 11, color = "black"),
         axis.title.x=element_text(size=15,face="bold"), 
         axis.text.y=element_text(face = "bold", size = 11, color = "black"),
@@ -732,12 +793,17 @@ ggplotly(X)
 
 
 x<- coef(lmList(adjustedsize~Temperature|totaliron_1 , data = cellsize_growth))
+
+z <- lmList(adjustedsize~Temperature|totaliron_1 , data = cellsize_growth)
+summary(z)
+
+coef(lmList(adjustedsize~Temperature|totaliron_1 , data = cellsize_growth))
 x_2 <- data.frame(x)
 x_2 <- data.frame(names = row.names(x), x_2)
 x_2$names <- as.numeric (as.character(x_2$names))
 
 y <- ggplot (x_2, aes(x = names, y = Temperature))+ 
-  geom_smooth( color = "black")+
+  #geom_smooth( color = "black")+
   geom_point(size = 3)+
   ylab(expression (Delta~Size / Delta ~ Temperature))+
   xlab (expression (Fe[Total]~ (nM)))+
@@ -751,14 +817,21 @@ y <- ggplot (x_2, aes(x = names, y = Temperature))+
 
 ggplotly (y)
 
+x_2$error <- c(0.0305447, 0.02178701,0.02178701,0.02178701,0.02178701,0.02178701,0.02178701,0.02178701)
+
 x_2$change <- ((x_2$Temperature/x_2$X.Intercept.)*-100)
+x_2$up <- (((x_2$Temperature+x_2$error)/x_2$X.Intercept.)*-100)
+x_2$down <- (((x_2$Temperature-x_2$error)/x_2$X.Intercept.)*-100)
+
+
 x_2$names <- as.factor(x_2$names)
 
-#png("figure3c_reduction-insize_vs_Fe.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+png("figure3c_reduction-insize_vs_Fe.png", width=45*0.75, height=23*0.75, units="cm", res=900)
 ggplot (x_2, aes(x = names, y = change))+
   geom_point(size = 5)+
-ylim(1,5)+
+#ylim(1,5)+
 scale_x_discrete (limits = c("3.75", "10", "15", "20", "35", "50", "100", "500"))+   
+  geom_errorbar(aes(ymin=x_2$down, ymax = x_2$up,width =0.4))+
   theme_bw()+
   xlab(expression (Fe[Total]~(nmol~L^-1)))+
   ylab(expression ('%'~Reduction~"in"~size~1*degree*C^-1))+
@@ -767,7 +840,7 @@ scale_x_discrete (limits = c("3.75", "10", "15", "20", "35", "50", "100", "500")
         axis.text.y=element_text(face = "bold", size = 20, color = "black"),
         axis.title.y=element_text(size=24,face="bold"))+
    theme(panel.grid = element_blank())
-#dev.off()
+dev.off()
 
 ```
 
@@ -866,43 +939,67 @@ ggplot(sizeovertime_sub, aes(x=daycount, y=size, color = totaliron_1))+
 ```
 
 
-fv/fm
+photophysiology
 ```{r}
-fvfm <- read.csv("LJ_1C3C6C_fvfm.csv", header = TRUE)
+#read in raw fv/fm and sigma values
+photophys <- read.csv("fvfm-sigma_6C3C1C.csv",  header = TRUE)
+ 
+#choose the treatments and values of interest, and seperate treatment into replicates, Fe, Mn and temperatures
+ photophys_2 <- photophys [c(6,9,7,8, 18, 24, 34)]  %>% separate(col = treatment, into = c("iron", "manganese", "replicate"),"_")
+photophys_2$iron_total <- str_sub(photophys_2$iron, start=3)
+photophys_2$manganese_total <- str_sub(photophys_2$manganese, start=3)
+photophys_2$Temperature<- str_sub(photophys_2$culturetemp, end=-4)
 
-colnames(fvfm) <- as.character(unlist(fvfm[1,]))
-fvfm <- fvfm [-c(1),] 
-fvfm_sub <- fvfm [c(5, 7:38)] 
-fvfm_sub = melt(fvfm_sub, id.vars = c("culturetemp"))
-names(fvfm_sub)[2] = "treatment"
-names(fvfm_sub)[3] = "fvfm"
-fvfm_sub$fvfm<- as.numeric (fvfm_sub$fvfm)
+#change the Fe total in Fe'
+photophys_2$iron_total <- as.numeric(photophys_2$iron_total)
+photophys_2$FeEDTA <- photophys_2$iron_total*10e-10
+photophys_3 <- merge (photophys_2, iron_2, by = c("FeEDTA", "Temperature"))
+photophys_3$Fee <- photophys_3$Fe*1000000000000
 
+#photophys_fe <-   subset(photophys_3, manganese_total < 48 | iron_total==500 | iron_total == 10)
 
-fvfm_sub$replicate <- str_sub(fvfm_sub$treatment, start=-1, end = -1)
-fvfm_sub$treatment1 <- str_sub(fvfm_sub$treatment, end=-3)
-
-fvfm_fe <- fvfm_sub[c(1:27, 37:60, 67:90),]
-fvfm_fe$treatment <- str_sub(fvfm_fe$treatment1, end=-6)
-fvfm_fe$treatment2 <- str_sub(fvfm_fe$treatment, start=3)
-
-fvfm_fe$treatment <- paste0 (fvfm_fe$treatment2,"_",fvfm_fe$replicate,":",fvfm_fe$culturetemp)
-
-fvfm_fe$treatment2 <- as.numeric(fvfm_fe$treatment2)
-fvfm_fe$FeEDTA <- fvfm_fe$treatment2*10e-10
-
-fvfm_fe$Temperature<- str_sub(fvfm_fe$culturetemp, end=-4)
-
-fvfm_fe_1 <- merge (fvfm_fe, iron_2, by = c("FeEDTA", "Temperature"))
-
-fvfm_fe_1$Fee <- fvfm_fe_1$Fe*1000000000000
+#photophys_fe$treatment <- paste(photophys_fe$manganese,photophys_fe$iron)
+photophys_fe <-   subset(photophys_3, manganese_total == 48)
 
 
-png("figure4a_fvfm.png", width=45*0.75, height=23*0.75, units="cm", res=900)
- ggplot(fvfm_fe_1, aes(x= Fee, y=fvfm, color = Temperature))+
-  #geom_point(size = 3)+
-     stat_summary(size=1)+
-  #stat_summary(fun.y = mean, geom = "point",aes(group =fvfm, color = Temperature), size = 4)+
+
+############ test plot to lkook at Mn######
+ggplot(photophys_fe, aes(x= treatment, y=sigma, color = Temperature))+
+  geom_point(size = 4)+
+   #stat_summary(size=1)+
+   
+ # stat_summary(fun.data =  mean_se, geom = "errorbar",width = 0.05, aes(colour = Temperature ))+   
+   scale_color_manual(values = c("black", "orange", "red"))+
+   theme_bw()+
+  scale_x_discrete(limits = c("Mn48 Fe10", "Mn0 Fe500", "Mn1 Fe500", "Mn48 Fe500"))+ 
+ #  ylim(0.1,0.6)+
+   labs(col="Temperature (°C)")+
+   ylab(expression (sigma~PSII))+
+   #ylab(expression (F[v]/F[m]))+
+   xlab (expression ("Fe'"~(pmol~L^-1)))+
+   theme(panel.grid = element_blank())+
+   theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
+        axis.title.x=element_text(size=24,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
+        axis.title.y=element_text(size=24,face="bold"))+
+   theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+   labs(col="Temperature (°C)")+
+   theme(panel.grid = element_blank())
+#############
+
+
+
+
+
+
+
+
+
+
+#fvfm plot
+#png("figure4a_fvfm.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+ ggplot(photophys_fe, aes(x= Fee, y=fvfm, color = Temperature))+
+   stat_summary(size=1)+
    stat_summary(fun.data =  mean_se, geom = "errorbar",width = 0.05, aes(colour = Temperature ))+   
    scale_color_manual(values = c("black", "orange", "red"))+
    theme_bw()+
@@ -919,65 +1016,77 @@ png("figure4a_fvfm.png", width=45*0.75, height=23*0.75, units="cm", res=900)
    theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
    labs(col="Temperature (°C)")+
    theme(panel.grid = element_blank())
-
- dev.off()
  
-
- #summary(fvfm_fe_1)
-
-#fvfm_fe_1$Temperature<- as.numeric(as.character(fvfm_fe_1$Temperature))
-#x <- lm (fvfm ~log(Fee)*Temperature, data = fvfm_fe_1)  
-#summary(x)
-
-#dev.off()
-```
-
-
-Sigma
-```{r}
-sigma <- read.csv("LJ_1C3C6C_sigma.csv", header = TRUE)
-
-colnames(sigma) <- as.character(unlist(sigma[1,]))
-sigma <- sigma [-c(1),] 
-sigma_sub <- sigma [c(5, 7:38)] 
-sigma_sub = melt(sigma_sub, id.vars = c("culturetemp"))
-names(sigma_sub)[2] = "treatment"
-names(sigma_sub)[3] = "sigma"
-sigma_sub$sigma<- as.numeric (sigma_sub$sigma)
-
-
-sigma_sub$replicate <- str_sub(sigma_sub$treatment, start=-1, end = -1)
-sigma_sub$treatment1 <- str_sub(sigma_sub$treatment, end=-3)
-
-sigma_fe <- sigma_sub[c(1:75),]
-sigma_fe$treatment <- str_sub(sigma_fe$treatment1, end=-6)
-sigma_fe$treatment2 <- str_sub(sigma_fe$treatment, start=3)
-
-sigma_fe$treatment <- paste0 (sigma_fe$treatment2,"_",sigma_fe$replicate,":",sigma_fe$culturetemp)
-
-sigma_fe$treatment2 <- as.numeric(sigma_fe$treatment2)
-sigma_fe$FeEDTA <- sigma_fe$treatment2*10e-10
-
-sigma_fe$Temperature<- str_sub(sigma_fe$culturetemp, end=-4)
-
-sigma_fe_1 <- merge (sigma_fe, iron_2, by = c("FeEDTA", "Temperature"))
-
-sigma_fe_1$Fee <- sigma_fe_1$Fe*1000000000000
-
-#sigma_fe_2 <- subset(sigma_fe_1, treatment2> 5)
-
-#png("figure4b_sigma.png", width=45*0.75, height=23*0.75, units="cm", res=900)
-ggplot(sigma_fe_1, aes(x= Fee, y=sigma, color = Temperature))+
-  #geom_point(size = 3)+
-     stat_summary(size=1)+
-  #stat_summary(fun.y = mean, geom = "point",aes(group =fvfm, color = Temperature), size = 4)+
-  stat_summary(fun.data =  mean_se, geom = "errorbar",width = 0.05, aes(colour = Temperature ))+   
+ 
+#Sigma plot
+ ggplot(photophys_fe, aes(x= Fee, y=sigma, color = Temperature))+
+   stat_summary(size=1)+
+   stat_summary(fun.data =  mean_se, geom = "errorbar",width = 0.05, aes(colour = Temperature ))+   
    scale_color_manual(values = c("black", "orange", "red"))+
    theme_bw()+
    labs(col="Temperature (°C)")+
    ylab(expression (sigma~PSII))+
    scale_x_log10()+
- #scale_x_discrete(limits=(c(10, 1000)))+
+   xlab (expression ("Fe'"~(pmol~L^-1)))+
+   theme(panel.grid = element_blank())+
+   theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
+        axis.title.x=element_text(size=24,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
+        axis.title.y=element_text(size=24,face="bold"))+
+   theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+   labs(col="Temperature (°C)")+
+   theme(panel.grid = element_blank())
+ 
+ 
+
+#fvfm vs sigma plot. the work below is to get error bars in both directions. 
+photophys_fe$rep <- paste (photophys_fe$culturetemp, photophys_fe$iron, photophys_fe$manganese)
+df <- aggregate(photophys_fe [c("fvfm", "sigma")], list (photophys_fe$rep),sd)
+colnames(df)<- c("treatment", "fvfmsd", "sigmasd")
+df1 <- aggregate(photophys_fe [c("fvfm", "sigma")], list (photophys_fe$rep),mean)
+colnames(df1)<- c("treatment", "fvfm", "sigma")
+photophys_fe_fvfm_vs_sigma <- merge (df, df1, by = "treatment")
+photophys_fe_fvfm_vs_sigma$temperature <- str_sub(photophys_fe_fvfm_vs_sigma$treatment, start=1, end = 3)
+photophys_fe_fvfm_vs_sigma_2 <- photophys_fe_fvfm_vs_sigma [-c(1:16),]
+
+ggplot(photophys_fe_fvfm_vs_sigma, aes(x= sigma, y=fvfm, color= temperature))+
+  geom_point(size = 4)+
+  geom_smooth (data = photophys_fe_fvfm_vs_sigma_2, method = "lm", se = TRUE, level = 0.95, size = 1.4, aes(color = photophys_fe_fvfm_vs_sigma_2$temperature), alpha =0.3)+
+  geom_errorbar(aes(ymin=fvfm-(fvfmsd/sqrt(3)), ymax = (fvfm+fvfmsd/sqrt(3))), alpha = 0.8)+
+  geom_errorbarh(aes(xmin=sigma-(sigmasd/sqrt(3)), xmax = sigma+(sigmasd/sqrt(3))),alpha = 0.5)+
+  scale_color_manual(values = c("black", "orange", "red"))+
+  theme_bw()+
+  labs(col="Temperature (°C)")+
+  ylab("fvfm")+
+  xlab(expression (sigma~PSII))+
+  ylab(expression (F[v]/F[m]))+
+  theme(panel.grid = element_blank())+
+  theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
+        axis.title.x=element_text(size=24,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
+        axis.title.y=element_text(size=24,face="bold"))+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  labs(col="Temperature (°C)")+
+  theme(panel.grid = element_blank())
+ 
+ 
+
+#fv per cell, which is equal to # of RC per cell
+
+photophys_fe$fvpercell <- photophys_fe$fv/photophys_fe$cellcount
+photophys_fe$RCII <- photophys_fe$Fo/photophys_fe$sigma
+
+
+#png("figureS4_fvpercel.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+ggplot(photophys_fe, aes(x= Fee, y=fvpercell, color = Temperature))+
+   stat_summary(size=1)+
+     stat_summary(fun.data =  mean_se, geom = "errorbar",width = 0.05, aes(colour = Temperature ))+   
+  scale_y_continuous(limits = c(0, 8))+
+   scale_color_manual(values = c("black", "orange", "red"))+
+   theme_bw()+
+   labs(col="Temperature (°C)")+
+  ylab(expression(RC[II]))+
+   scale_x_log10()+
    xlab (expression ("Fe'"~(pmol~L^-1)))+
    theme(panel.grid = element_blank())+
    theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
@@ -988,54 +1097,45 @@ ggplot(sigma_fe_1, aes(x= Fee, y=sigma, color = Temperature))+
    labs(col="Temperature (°C)")+
    theme(panel.grid = element_blank())
 #dev.off()
+ 
+#If we want to inspect the Mn treatments
+ 
+# photophys_mn <- subset(photophys_3, manganese_total == 0| manganese_total==1|iron_total==500|iron_total==3.75) 
+# photophys_mn$treatment <-  paste(photophys_mn$iron, photophys_mn$manganese)
 
-```
+#photophys_fe$iron_total <- as.numeric(photophys_fe$iron_total)
 
+#plot(fvfm~iron_total, photophys_fe)
+#shapiro.test(photophys_fe$fvfm)
 
-fvfm_vs_sigma
-```{r}
-require(plyr)
-fvfmsig <- merge (sigma_fe_1, fvfm_fe_1, by = c("treatment"))
-#fvfmsig <- subset(fvfmsig, treatment2.x> 5)
-fvfmsig$rep <- paste (fvfmsig$culturetemp.x, fvfmsig$treatment1.x)
+#http://www.sthda.com/english/wiki/one-way-anova-test-in-r#check-the-normality-assumption
 
-df <- aggregate(fvfmsig [c("fvfm", "sigma")], list (fvfmsig$rep),sd)
-colnames(df)<- c("treatment", "fvfmsd", "sigmasd")
-
-df1 <- aggregate(fvfmsig [c("fvfm", "sigma")], list (fvfmsig$rep),mean)
-colnames(df1)<- c("treatment", "fvfm", "sigma")
-
-fvfmsig2<- merge (df, df1, by = "treatment")
-
-fvfmsig2$temperature <- str_sub(fvfmsig2$treatment, start=1, end = 3)
-fvfmsig3 <- fvfmsig2 [-c(1:16),]
+#hist(photophys_fe$fvfm)
+library(car)
 
 
-#png("figure4c_sigma-vs-fvfm.png", width=45*0.75, height=23*0.75, units="cm", res=900)
-ggplot(fvfmsig2, aes(x= sigma, y=fvfm, color= temperature))+
-  geom_point(size = 4)+
- # geom_smooth (data = fvfmsig3, method = "lm", se = FALSE,  size = 1.4)+
-  geom_smooth (data = fvfmsig3, method = "lm", se = TRUE, level = 0.95, size = 1.4, aes(color = fvfmsig3$temperature), alpha =0.3)+
-  geom_errorbar(aes(ymin=fvfm-(fvfmsd/sqrt(3)), ymax = (fvfm+fvfmsd/sqrt(3))), alpha = 0.8)+
-  geom_errorbarh(aes(xmin=sigma-(sigmasd/sqrt(3)), xmax = sigma+(sigmasd/sqrt(3))),alpha = 0.5)+
-   scale_color_manual(values = c("black", "orange", "red"))+
-   theme_bw()+
-   labs(col="Temperature (°C)")+
-   ylab("fvfm")+
- #scale_y_continuous(limits = c(0.1,0.55))+
-  #scale_x_continuous(limits = c(100,600))+
-  xlab(expression (sigma~PSII))+
-  ylab(expression (F[v]/F[m]))+
-  theme(panel.grid = element_blank())+
-  theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.x=element_text(size=24,face="bold"), 
-        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.y=element_text(size=24,face="bold"))+
-   theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
-   labs(col="Temperature (°C)")+
-   theme(panel.grid = element_blank())
+#using the ggpubr package, we check for normality:
+ggdensity(photophys_fe$fvfm)
+#this shows whether the data are normal/bellshaped. in this case they are not
 
-#dev.off()
+#using the car package, we can test for homogeniety of variance 
+leveneTest(RCII~Temperature, photophys_fe)
+
+ggqqplot(chla_aov$value) #this shows whether data follow reference line. We have some outliers. 
+shapiro.test(photophys_fe$fvfm)
+#the output for the shapiro test shows that the chl-a data are not normally distributed (p value is <0.05, which means data violate normality)
+
+
+#an alternative to anova , a non-parametric test would be the kruskal test
+kruskal.test(RCII~Temperature, photophys_fe)
+
+#this is if variance rules are broken (pvalue is significant in levene test). The one way function does a Welsh test
+oneway.test(RCII~Temperature, photophys_fe)
+kruskal.test(RCII~FeEDTA, photophys_fe)
+
+
+x<- aov(RCII~FeEDTA, photophys_fe)
+summary(x)
 
 
 
@@ -1044,29 +1144,38 @@ ggplot(fvfmsig2, aes(x= sigma, y=fvfm, color= temperature))+
 
 
 
-ggplot(fvfmsig, aes(x= sigma, y=fvfm, color= Temperature.x))+
-  geom_point(size = 3)+
-    #geom_errorbar(aes(ymin=fvfm-fvfmsd, ymax = fvfm+fvfmsd), width =0.8)+
-   # geom_errorbarh(aes(xmin=sigma-sigmasd, xmax = sigma+sigmasd))+
-   scale_color_manual(values = c("black", "orange", "red"))+
-   theme_bw()+
-  geom_smooth(method = "lm", se = FALSE,size = 1.4 )+
-   labs(col="Temperature (°C)")+
-   ylab("fvfm")+
- #scale_y_continuous(limits = c(0.1,0.5))+
-  #scale_x_continuous(limits = c(200,600))+
-   xlab ("sigma")+
-   theme(panel.grid = element_blank())+
-   theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.x=element_text(size=24,face="bold"), 
-        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.y=element_text(size=24,face="bold"))+
-   theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
-   labs(col="Temperature (°C)")+
-   theme(panel.grid = element_blank())
 
 
-x <- lm (fvfm~sigma*temperature, data = fvfmsig2) 
+#Stats
+# test effects of iron and temperature on chla
+#test anova assumptions: assumptions were not met. 
+
+
+chla_aov <- dplyr::filter(chla, !grepl('initial', iron))
+#aov <- aov(value~temp+iron, chla_aov) : this test can't be used here because data are not normal. 
+
+#using the ggpubr package, we check for normality:
+ggdensity(chla_aov$value)
+#this shows whether the data are normal/bellshaped. in this case they are not
+
+ggqqplot(chla_aov$value) #this shows whether data follow reference line. We have some outliers. 
+shapiro.test(chla_aov$value)
+#the output for the shapiro test shows that the chl-a data are not normally distributed (p value is <0.05, which means data violate normality)
+
+
+#an alternative to anova , a non-parametric test would be the kruskal test
+kruskal.test(value~temp, chla)
+kruskal.test(value~iron, chla)
+
+x<- aov(value~temp*iron, chla)
+summary(x)
+
+
+
+
+
+x <- aov (fvfm~Temperature, data = photophys_fe) 
+
 summary(x)
 coef(x)
 ```
@@ -1074,50 +1183,60 @@ coef(x)
 
 
 
-
-
-
-
-
-Organize the dataframes and use long formart
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
-#rfu_sub <- rfu [c(5,6, 9:40)] 
-rfu_sub <- rfu [c(5,6, 9:17, 21:29)] 
-rfu_sub = melt(rfu_sub, id.vars = c("culturetemp", "daycount"))
-names(rfu_sub)[4] = "RFU"
-names(rfu_sub)[3] = "treatment"
-rfu_sub$RFU<- as.numeric (rfu_sub$RFU)
-rfu_sub$daycount<- as.numeric (as.character(rfu_sub$daycount))
-```
-
-Make RFU plots to show growth curves of different treatments 
+cellcount vs RFU test 
 ```{r}
-RFU_plot<- ggplot(rfu_sub, aes(x= daycount, y=RFU,color = culturetemp, group= interaction(treatment, culturetemp)))+
-  geom_point(size = 1)+
-  geom_line()+
-  xlab ("Days Since Inoculation")+
-  ylab ("RFU")+
-  theme(plot.title = element_text(hjust = 0.5))+
-  theme(axis.text.x = element_text(angle = 50, vjust = 1.0, hjust = 1.0))+
- scale_y_log10()+
-  theme_bw()
-RFU_plot + facet_wrap(~treatment, ncol = 3)
+cellcount <- read.csv("LJ_growth-experiment_25mLtubes_1C3C6C_cellcount.csv", header = TRUE)
+colnames(cellcount) <- as.character(unlist(cellcount[1,]))
+cellcount <- cellcount [-c(1),]
+cellcount <- cellcount [-c(1:4, 7,8, 18:20, 29,30, 39,40)]
 
-ggplot(rfu_sub, aes(x= daycount, y=RFU ,color = culturetemp, group = interaction(treatment,culturetemp)))+
-  geom_point(size = 1)+
-  geom_line()+
-  xlab ("Days Since Inoculation")+
- ylab ("RFU")+
-  #theme(plot.title = element_text(hjust = 0.5))+
-  #theme(axis.text.x = element_text(angle = 50, vjust = 1.0, hjust = 1.0))+
- # geom_smooth(span = 0.8, se = FALSE)+
-  #scale_y_log10()+
-  theme_bw()
+names(cellcount)<- c("culturetemp", "daycount", "0_A","3.75_A", "10_A", "15_A", "20_A","35_A", "50_A", "100_A", "500_A", "3.75_B", "10_B", "15_B", "20_B","35_B", "50_B", "100_B", "500_B", "3.75_C", "10_C", "15_C", "20_C","35_C", "50_C", "100_C", "500_C")
+
+cellcount_sub <- melt (cellcount, id.vars = c("daycount", "culturetemp"))
+
+names(cellcount_sub) <- c("daycount", "culturetemp", "Fe", "cellcount")
+
+cellcount_sub$daycount<- as.numeric (as.character(cellcount_sub$daycount))
+cellcount_sub$cellcount<- as.numeric (as.character(cellcount_sub$cellcount))
+cellcount_sub <- na.omit(cellcount_sub)
+
+
+
+cellcountvsRFU <- merge (rfu_monod_sub, cellcount_sub, by = c("Fe", "culturetemp", "daycount"))
+
+
+cellcountvsRFU$culturetemp <-str_sub(cellcountvsRFU$culturetemp, end = 1)
+cellcountvsRFU$Fe <- str_sub(cellcountvsRFU$Fe, start=1, end =-3)
+cellcountvsRFU$Fe<- as.numeric (cellcountvsRFU$Fe)
+cellcountvsRFU <- subset(cellcountvsRFU, cellcount<600)
+
+png("FigureS2_rfuvscellcount.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+ggplot (cellcountvsRFU, aes (x = cellcount, y = RFU))+
+  geom_point (size=4, aes(color = culturetemp))+
+  geom_smooth(method ="lm", color = "black", size = 1.5)+
+  #scale_color_gradient2(low = "gray" , high = "black", trans = "log")+
+  
+  ylab(expression (Relative~Fluorescence~Units~(RFU)))+
+  xlab(expression (Cells~mu*L^-1))+
+  theme_bw()+
+  scale_color_manual(values = c("black", "orange", "red"))+
+  scale_shape_manual(values = c(1, 19, 15))+
+  theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
+        axis.title.x=element_text(size=24,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
+        axis.title.y=element_text(size=24,face="bold"))+
+   theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+   labs(col="Temperature (°C)")+
+   theme(panel.grid = element_blank())
+dev.off()
+
+x <- lm (RFU~cellcount, data = cellcountvsRFU) 
+summary(x)
+coef(x)
+
+
 
 ```
-
-
 
 
 
@@ -1299,39 +1418,6 @@ ggplot (x, aes (x = as.integer(treatment), y = mumax, color = temp,  group = tem
 ```
 
 
-
-cellcount vs RFU test 
-```{r}
-
-  z <- dplyr::filter (x, grepl("3C",temp))
-  countRFU <- merge (z, y, by ="treatment")
-  countRFU_sub <- countRFU [c(1,4,9)]
-  names(countRFU_sub) <- c("treatment", "RFU", "cellcount")
-  
-countRFU_sub = melt(countRFU_sub, id.vars = c("treatment"))
-
-ggplot (countRFU_sub, aes (x = treatment, y = value, color = variable))+
-  geom_point (size = 3)+
-  geom_line ()+
-    scale_y_continuous(limits = c(0, 0.3))+
-  #geom_smooth(span = 0.8, se = FALSE)+
-  scale_x_discrete (limits = c("Fe0_Mn48", "Fe2.5_Mn48", "Fe5_Mn48", "Fe10_Mn48", "Fe20_Mn48", "Fe50_Mn48", "Fe100_Mn48", "Fe500_Mn48"))+
-  theme_bw()
-
-
-
-   ggplot (countRFU_sub, aes (x = treatment, y = value, color = variable))+
-  geom_point (size = 3)+
-  #geom_line ()+
-    scale_y_continuous(limits = c(0, 0.3))+
-  #geom_smooth(span = 0.8, se = FALSE)+
-  scale_x_discrete (limits = c("Fe0_Mn0", "Fe0_Mn48", "Fe500_Mn0", "Fe500_Mn2.5", "Fe500_Mn48"))+
-  theme_bw()
-
-
-
-
-```
 
 
 
@@ -1562,6 +1648,31 @@ ggplot (y, aes (x = as.integer(treatment), y = mumax, color = temp, group = temp
  #stat_smooth(formula = x~log(y) )
   theme_bw()
   #stat_function(fun = a_formula)
+```
+
+delete after this
+```{r}
+Mn <- read.csv("delete.csv", header = TRUE)
+Mn$Temperature <- as.character(Mn$Temperature)
+Mn$Mn <- as.character(Mn$Mn)
+
+png("delete_mn.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+ggplot(Mn, aes(x= Mn, y=mumax, color = Temperature))+
+  geom_point(size = 4, alpha = 0.7)+
+   scale_color_manual(values = c("black","red"))+
+   theme_bw()+
+   ylab ("Growth Rate (d-1)")+
+   xlab ("Manganese (nM)")+
+  # theme(panel.grid = element_blank())+
+   theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
+        axis.title.x=element_text(size=24,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
+        axis.title.y=element_text(size=24,face="bold"))+
+   theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+   labs(col="Temperature (°C)")
+
+dev.off()
+  
 ```
 
 
