@@ -11,16 +11,57 @@ require(plotly)
 require(growthrates)
 require(lattice)
 require(stringr)
+require(gridExtra)
+require(scatterplot3d)
 require(drc)
 require(nlstools)
 library(nls2)
-library(gridExtra)
 library(nlme)
 library(ggstance)
 library(ggpubr)
 library(plotly)
+require(nlMS)
+require(lme4) ## nlmer, and lmer is from lme4
+require(nlme)
+require(lmerTest)
+require(gam)
+library(emmeans)
+library(rcompanion)
 setwd("C:/Users/Loay Jabre/Desktop/PhD/Growth Experiment/RFU-growth-experiment/GrowthPaper")
 #require (tidyverse)
+```
+
+#playing around with fitting package
+```{r}
+#linear
+# a <- c(1,2,3,4,5,6,7,8,9)
+# b <- c(10,11,12,13,14,15,16,17,18)
+# 
+# #quadratic
+# a <- c (10, 15, 20, 24, 30, 34, 40, 45, 48, 50, 58, 60, 64)
+# b <- c(115.6, 157.2, 189.2, 220.8, 253.8, 269.2, 284.8, 285, 277.4, 269.2, 244.2, 231.4, 180.4)
+# 
+# #logistic
+# a <- c(1,2,3,5,10,15,20,25,30,35)
+# b <- c(2.8,4.2,3.5,6.3,15.7,21.3,23.7,25.1,25.8,25.9)
+
+a <- c(0,1,2,5,8,12,30,50)
+b <- c(0,11.1,25.4,44.8,54.5,58.2,72.0,60.1)
+
+a <- c(0.312, 0.239, 0.178)
+b <- c(6, 3, 1)
+
+a <- monod6C_rfu$Fee
+b <- monod6C_rfu$mumax
+
+plot(a,b)
+model_selection(data=cbind(a, b), name_results = "AICresults", name_dir = "C:/Users/Loay Jabre/Desktop/PhD/Growth Experiment/RFU-growth-experiment/GrowthPaper")
+
+z <- read.csv("AICresults.csv", sep = ";")
+
+
+#http://strata.uga.edu/8370/lecturenotes/nonlinearRegression.html
+
 ```
 
 Calculating efree iron (Fe') concentrations: 
@@ -63,23 +104,22 @@ dissociation_table$PAR <- as.character(dissociation_table$PAR)
 #this plot is almost identical to the plot provided in the paper. I believe that they missed a data point, at the 500PAR, 20C, so that line looks slightly different. 
 
 #png("supp_figure1.png", width=45*0.75, height=23*0.75, units="cm", res=900)
-
-ggplot (dissociation_table, aes( x = pH, y = logKd, color = Temperature, shape = PAR))+
-  geom_point(size = 5, alpha = 0.9)+
-  theme_bw()+ 
-  scale_color_manual (values = c("blue", "red"))+
-  scale_shape_manual(values  = c(16,1))+
-  geom_smooth(method = 'lm', se = FALSE)+
-  ylab(expression(Log~K[d]~(dissociation~constant)))+
-  xlab(expression(pH))+
-  theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.x=element_text(size=24,face="bold"), 
-        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.y=element_text(size=24,face="bold"))+
-  theme (legend.title = element_text (size = 16), legend.text = element_text(size = 12), legend.position = c(0.83, 0.2))+
-  labs(col="Temperature (°C)")+
-  labs (shape = expression(PAR~(mu*mol~photons~m^-2~s^-1)))
- theme(panel.grid = element_blank())
+# ggplot (dissociation_table, aes( x = pH, y = logKd, color = Temperature, shape = PAR))+
+#   geom_point(size = 5, alpha = 0.9)+
+#   theme_bw()+ 
+#   scale_color_manual (values = c("blue", "red"))+
+#   scale_shape_manual(values  = c(16,1))+
+#   geom_smooth(method = 'lm', se = FALSE)+
+#   ylab(expression(Log~K[d]~(dissociation~constant)))+
+#   xlab(expression(pH))+
+#   theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
+#         axis.title.x=element_text(size=24,face="bold"), 
+#         axis.text.y=element_text(face = "bold", size = 20, color = "black"),
+#         axis.title.y=element_text(size=24,face="bold"))+
+#   theme (legend.title = element_text (size = 16), legend.text = element_text(size = 12), legend.position = c(0.83, 0.2))+
+#   labs(col="Temperature (°C)")+
+#   labs (shape = expression(PAR~(mu*mol~photons~m^-2~s^-1)))+
+#  theme(panel.grid = element_blank())
 
 #dev.off()
 
@@ -89,20 +129,20 @@ ggplot (dissociation_table, aes( x = pH, y = logKd, color = Temperature, shape =
 
 dissociation_constants_pH <- dissociation_table%>% filter (between (pH, 8 ,8.3))
 
-ggplot (dissociation_constants_pH, aes( x = Temperature, y = logKd, shape = PAR, group= PAR))+
-  geom_point(size = 5)+
-  geom_smooth(method = 'lm', color = "black")+
-  scale_shape_manual (values = c(16,1))+
-  ylab(expression(Log~K[d]~(dissociation~constant)))+
-  xlab(expression(Temperature~(degree*C)))+
-  theme_bw()+
-  theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.x=element_text(size=24,face="bold"), 
-        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.y=element_text(size=24,face="bold"))+
-  theme (legend.title = element_text (size = 14), legend.text = element_text(size = 12), legend.position = c(0.83, 0.9))+
-  labs (shape = expression(PAR~(mu*mol~photons~m^-2~s^-1)))+
- theme(panel.grid = element_blank())
+# ggplot (dissociation_constants_pH, aes( x = Temperature, y = logKd, shape = PAR, group= PAR))+
+#   geom_point(size = 5)+
+#   geom_smooth(method = 'lm', color = "black")+
+#   scale_shape_manual (values = c(16,1))+
+#   ylab(expression(Log~K[d]~(dissociation~constant)))+
+#   xlab(expression(Temperature~(degree*C)))+
+#   theme_bw()+
+#   theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
+#         axis.title.x=element_text(size=24,face="bold"), 
+#         axis.text.y=element_text(face = "bold", size = 20, color = "black"),
+#         axis.title.y=element_text(size=24,face="bold"))+
+#   theme (legend.title = element_text (size = 14), legend.text = element_text(size = 12), legend.position = c(0.83, 0.9))+
+#   labs (shape = expression(PAR~(mu*mol~photons~m^-2~s^-1)))+
+#  theme(panel.grid = element_blank())
 
 #From here we see that in the dark, Kd(dark) is not affected by temperature, but Kd(light) or Khv is  temperature sensitive. I will assume that the temperature effect on Kd in the light (Khv) is linear (no other data available to suggest otherwise). so, I modelled it as such. 
 
@@ -124,14 +164,14 @@ rownames(xdata)<- c(1,3,6,10,20)
 
 xdata$Temperature <- c(1,3,6,10,20)
 
-ggplot (xdata, aes( x = Temperature, y = z))+
-  geom_point(size = 3)+
-  theme_bw()+
-  theme_bw()+theme(axis.text.x=element_text(face = "bold", size = 12),
-        axis.title.x=element_text(size=13,face="bold"), 
-        axis.text.y=element_text(face = "bold", size = 12),
-        axis.title.y=element_text(size=13,face="bold"))+
-  ylab("Log Khv (dissociation constant in the light)")
+# ggplot (xdata, aes( x = Temperature, y = z))+
+#   geom_point(size = 3)+
+#   theme_bw()+
+#   theme_bw()+theme(axis.text.x=element_text(face = "bold", size = 12),
+#         axis.title.x=element_text(size=13,face="bold"), 
+#         axis.text.y=element_text(face = "bold", size = 12),
+#         axis.title.y=element_text(size=13,face="bold"))+
+#   ylab("Log Khv (dissociation constant in the light)")
 
 
 #Now we can use that linear model to calculate Fe' in media
@@ -166,15 +206,15 @@ iron_2$logKhv <- predict.lm(templinear, iron_2)
 
 
 #just checking to see that our Khv values make sense for the temperatures we want
-ggplot (iron_2, aes( x = Temperature, y = logKhv))+
-  geom_point(size = 3)+
-  theme_bw()+
-  theme_bw()+theme(axis.text.x=element_text(face = "bold", size = 12),
-        axis.title.x=element_text(size=13,face="bold"), 
-        axis.text.y=element_text(face = "bold", size = 12),
-        axis.title.y=element_text(size=13,face="bold"))+
-  ylab("Log Khv (dissociation constant in the light)")
-
+# ggplot (iron_2, aes( x = Temperature, y = logKhv))+
+#   geom_point(size = 3)+
+#   theme_bw()+
+#   theme_bw()+theme(axis.text.x=element_text(face = "bold", size = 12),
+#         axis.title.x=element_text(size=13,face="bold"), 
+#         axis.text.y=element_text(face = "bold", size = 12),
+#         axis.title.y=element_text(size=13,face="bold"))+
+#   ylab("Log Khv (dissociation constant in the light)")
+# 
 
 
 
@@ -198,8 +238,7 @@ ggplot (iron_2, aes( x = FeEDTA, y = Fe, color = Temperature))+
 scale_x_log10()
 ```
 
-  
- 
+
 Import RFU and make sure headings are good
 ```{r}
 rfu <- read.csv("LJ_alltemps_RFU.csv", header = TRUE )
@@ -208,7 +247,7 @@ colnames(rfu) <- as.character(unlist(rfu[1,]))
 rfu <- rfu [-c(1),] 
 ```
 
-Make sure the instrument is performing consistenly
+Make sure the instrument is performing consistenly throughout the measurement period
 ```{r}
 instrument_check <- rfu[c(1:4, 7,8)]
 
@@ -253,8 +292,6 @@ b <- ggplot (instrument_check, aes (x = date, y = standard))+
 grid.arrange(a,b)
 ```
 
-
-
 Getting Monod plots:
 ```{r}
 #first, select the part of the data that we use for the monod plots (include all treatments, we can toss what we don't want and take out NA/s later)
@@ -268,11 +305,7 @@ names(rfu_monod)<- c("culturetemp", "daycount", "0_A","3.75_A", "10_A", "15_A", 
 
 rfu_monod_sub <- melt (rfu_monod, id.vars = c("daycount", "culturetemp"))
 
-
 names(rfu_monod_sub) <- c("daycount", "culturetemp", "Fe", "RFU")
-
-
-
 
 rfu_monod_sub$daycount<- as.numeric (as.character(rfu_monod_sub$daycount))
 rfu_monod_sub$RFU<- as.numeric (as.character(rfu_monod_sub$RFU))
@@ -280,17 +313,15 @@ rfu_monod_sub$RFU<- as.numeric (as.character(rfu_monod_sub$RFU))
 #there are NAs in the data because there are more replicates at certain temperatures. So, we'll get rid of those NA's 
 rfu_monod_sub <- na.omit(rfu_monod_sub)
 
-
 monod_fit_RFU <- all_easylinear( RFU~daycount |Fe+culturetemp, data = rfu_monod_sub)
-
-
 
 #the model above calculates growth rate by fitting a linear model to the exponential groth curve. Below are the parameters and outputs if interested
 coef(monod_fit_RFU)
 summary(monod_fit_RFU)
-#rsquared(monod_fit_RFU)
+rsquaredfit <- data.frame(rsquared(monod_fit_RFU))
 par(mfrow = c(3,8)) 
 plot(monod_fit_RFU, log = "y")
+#plot(monod_fit_RFU)
 
 #taking the output of the linear model and putting it into a dataframe
 monod_rfu<- coef(monod_fit_RFU ) %>%  data.frame 
@@ -302,27 +333,6 @@ monod_rfu$culturetemp <- str_sub(monod_rfu$treatment, start = -4)
 monod_rfu$replicate <- str_sub(monod_rfu$treatment, start=-6, end = -6)
 monod_rfu$iron <- str_sub(monod_rfu$treatment, end=-8)
 monod_rfu$iron<- as.numeric (monod_rfu$iron)
-
-
-
-
-# #Lena's plot
-# ggplot (monod_rfu, aes (x = treatment, y = mumax))+
-#   geom_point (size = 5, alpha = 0.6)+
-#   #scale_y_continuous(breaks = seq(0, 0.4, 0.05))+
-#   ylab ("Growth rate (d-1)")+
-#   xlab ("Treatment")+
-#   scale_x_discrete(limits = c("noMnnoFe", "noMn", "noFe", "replete"))+
-#   #scale_color_gradient2(low = blues9, mid = "Orange", high = "red")+
-#   #scale_color_manual(values = c("blue", "black","orange" ,"red", "darkred"))+
-#   #theme(axis.text.x = element_text (angle = 60, hjust =1))+
-#   theme_bw()+
-#   theme(axis.text.x=element_text(face = "bold"),
-#         axis.title.x=element_text(size=13,face="bold"),
-#         axis.text.y=element_text(face = "bold", size = 12),
-#         axis.title.y=element_text(size=13,face="bold")
-# )
-
 
 
 monod_rfu$FeEDTA <- monod_rfu$iron/1000000000
@@ -338,30 +348,23 @@ mergedata_sub$Temperature<- as.character (mergedata_sub$Temperature)
 mergedata_sub$Fee <- mergedata_sub$Fe*1000000000000
 
 
-
-
-
-
-
-#plot against Fe'
-x<- ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = Temperature))+
-  geom_point (size = 3, alpha = 0.6)+
-  scale_y_continuous(breaks = seq(0, 0.4, 0.05))+
-  ylab ("Growth rate (d-1)")+
-  xlab ("[Fe'] (Mol L-1)")+
-  #scale_color_gradient2(low = blues9, mid = "Orange", high = "red")+
-  scale_color_manual(values = c("blue", "black","orange" ,"red", "darkred"))+
-  theme(axis.text.x = element_text (angle = 60, hjust =1))+
-  theme_bw()+
-  theme(axis.text.x=element_text(face = "bold"),
-        axis.title.x=element_text(size=13,face="bold"),
-        axis.text.y=element_text(face = "bold", size = 12),
-        axis.title.y=element_text(size=13,face="bold")
-)
-
-
-ggplotly(x)
-#here, we can delete any datapoints we don't want
+# #plot mu against Fe' without any curves fitted. 
+# x<- ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = Temperature))+
+#   geom_point (size = 3, alpha = 0.6)+
+#   scale_y_continuous(breaks = seq(0, 0.4, 0.05))+
+#   ylab ("Growth rate (d-1)")+
+#   xlab ("[Fe'] (Mol L-1)")+
+#   #scale_color_gradient2(low = blues9, mid = "Orange", high = "red")+
+#   scale_color_manual(values = c("blue", "black","orange" ,"red", "darkred"))+
+#   theme(axis.text.x = element_text (angle = 60, hjust =1))+
+#   theme_bw()+
+#   theme(axis.text.x=element_text(face = "bold"),
+#         axis.title.x=element_text(size=13,face="bold"),
+#         axis.text.y=element_text(face = "bold", size = 12),
+#         axis.title.y=element_text(size=13,face="bold")
+# )
+# 
+# ggplotly(x) #here, we can delete any datapoints we don't want
 
 #for example, I don't want the outlier in 1C at 500nM 
 mergedata_sub <- mergedata_sub [-c(66,67,71),]
@@ -379,13 +382,25 @@ monod6C_rfu <- mergedata_sub[mergedata_sub$Temperature ==6,]
 #monod5.7C_rfu <- subset(monod5.7C_rfu,  Fee<300)
 
 
-monod0.7C_rfu$Fee<- as.numeric (monod0.7C_rfu$Fee)
+#monod0.7C_rfu$Fee<- as.numeric (monod0.7C_rfu$Fee)
 monod1C_rfu$Fee<- as.numeric (monod1C_rfu$Fee)
 monod3C_rfu$Fee<- as.numeric (monod3C_rfu$Fee)
 monod6C_rfu$Fee<- as.numeric (monod6C_rfu$Fee)
 
 
 
+#monod_test<- nls(mumax ~ Vm * Fee/(K+Fee), data = monod1C_rfu)
+#monod_test2 <- lm(mumax~Fee, data = monod1C_rfu)
+
+#monod_test_3 <- nlme(mumax ~ Vm * Fee/(K+Fee), data = mergedata_sub, 
+                     # fixed = Vm+K~1, 
+                     # random = Vm+K~1|treatment, 
+                     # start = 1E-6)
+
+#list(K=1E-6, Vm = max(mergedata_sub$mumax)))
+
+#summary(monod_test2)
+#AIC(monod_test,monod_test2)
 
 monod_1C_rfu <- nls(mumax ~ Vm * Fee/(K+Fee), data = monod1C_rfu, 
     start = list(K=1E-6, Vm = max(monod1C_rfu$mumax)))
@@ -396,17 +411,13 @@ monod_3C_rfu <- nls(mumax ~ Vm * Fee/(K+Fee), data = monod3C_rfu,
 monod_6C_rfu <- nls(mumax ~ Vm * Fee/(K+Fee), data = monod6C_rfu, 
     start = list(K=1E-6, Vm = max(monod6C_rfu$mumax)))
 
-#http://strata.uga.edu/8370/lecturenotes/nonlinearRegression.html
-
-
-#temp1<- coef(monod_0.7C_rfu) %>%data.frame %>% `colnames<-`("0.7C")
-
 
 summary(monod_1C_rfu)
 summary(monod_3C_rfu)
 summary(monod_6C_rfu)
-#there is no R^2 value for non-linear regression because it tends to be faulty. 
 
+#plot(monod_1C_rfu)
+#plot(monod_3C_rfu)
 
 monod_1 <- function(x){
   (0.17837*x)/((67.264+x))
@@ -422,9 +433,11 @@ monod_6 <- function(x){
 }
 
 
+
+#IF we want to have confidence intervals on the curve
 as.lm.nls <- function(object, ...) {
     if (!inherits(object, "nls")) {
-		w <- paste("expected object of class nls but got object of class:", 
+		w <- paste("expected object of class nls but got object of class:",
 			paste(class(object), collapse = " "))
 		warning(w)
 	}
@@ -433,14 +446,14 @@ as.lm.nls <- function(object, ...) {
 	if (is.null(colnames(gradient))) {
 		colnames(gradient) <- names(object$m$getPars())
 	}
-	response.name <- if (length(formula(object)) == 2) "0" else 
+	response.name <- if (length(formula(object)) == 2) "0" else
 		as.character(formula(object)[[2]])
 
 	lhs <- object$m$lhs()
 	L <- data.frame(lhs, gradient)
 	names(L)[1] <- response.name
 
-	fo <- sprintf("%s ~ %s - 1", response.name, 
+	fo <- sprintf("%s ~ %s - 1", response.name,
 		paste(colnames(gradient), collapse = "+"))
 	fo <- as.formula(fo, env = proto:::as.proto.list(L))
 
@@ -448,18 +461,16 @@ as.lm.nls <- function(object, ...) {
 
 }
 
-
-
-fit1C<-predict(as.lm.nls(monod_1C_rfu), interval = "confidence") 
+fit1C<-predict(as.lm.nls(monod_1C_rfu), interval = "confidence")
 monod1C_rfu$lowerfit<-fit1C[,2]
 monod1C_rfu$upperfit<-fit1C[,3]
 
-fit3C<-predict(as.lm.nls(monod_3C_rfu), interval = "confidence") 
+fit3C<-predict(as.lm.nls(monod_3C_rfu), interval = "confidence")
 monod3C_rfu$lowerfit<-fit3C[,2]
 monod3C_rfu$upperfit<-fit3C[,3]
 
 
-fit6C<-predict(as.lm.nls(monod_6C_rfu), interval = "confidence") 
+fit6C<-predict(as.lm.nls(monod_6C_rfu), interval = "confidence")
 monod6C_rfu$lowerfit<-fit6C[,2]
 monod6C_rfu$upperfit<-fit6C[,3]
 
@@ -467,7 +478,7 @@ monod6C_rfu$upperfit<-fit6C[,3]
 
 #png("figure1_mu-vs-Fe.png", width=45*0.75, height=23*0.75, units="cm", res=900)
 ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = Temperature))+
-  stat_summary(fun.y = mean, geom = "point",aes(group =Temperature, color = Temperature), size = 4)+
+  stat_summary(fun.y = mean, geom = "point",aes(group =Temperature, color = Temperature), size = 5)+
   stat_summary(fun.data =  mean_se, geom = "errorbar",width = 30, aes(colour = Temperature ))+
   scale_y_continuous(breaks = seq(0, 0.4, 0.05))+
   ylab (expression (Growth~rate~ (mu~d^-1)))+
@@ -475,37 +486,35 @@ ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = Temperature))+
   scale_color_manual(values = c("black", "orange", "red"))+
   theme(axis.text.x = element_text (angle = 60, hjust =1))+
   theme_bw()+
+  #scale_x_log10()+
   stat_function(fun = monod_1, color = 'black', size = 0.8)+
   stat_function(fun = monod_3, color = 'orange', size = 0.8)+
   stat_function(fun = monod_6, color = 'red', size =0.8)+
-  theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.x=element_text(size=24,face="bold"), 
-        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.y=element_text(size=24,face="bold"))+
+  theme(axis.text.x=element_text(face = "bold", size = 26, color = "black"),
+        axis.title.x=element_text(size=32,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 26, color = "black"),
+        axis.title.y=element_text(size=32,face="bold"))+
   theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
   labs(col="Temperature (°C)")+
   theme(panel.grid = element_blank())
+  #geom_ribbon(data=monod1C_rfu,
+            #aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.2, fill = "black", color = NA)+
+ # geom_ribbon(data=monod3C_rfu,
+             #aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.2, fill = "orange", color = NA)+
+  #geom_ribbon(data=monod6C_rfu, color = NA,
+            #aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.2, fill = "red", color = NA)
 
-# geom_ribbon(data=monod1C_rfu,
-#             aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.3, fill = "black", color = NA)+
-#  geom_ribbon(data=monod3C_rfu,
-#               aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.3, fill = "orange", color = NA)+
-#   geom_ribbon(data=monod6C_rfu, color = NA,
-#             aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.3, fill = "red", color = NA)
-                  
+
 #dev.off()
 
 ##https://stackoverflow.com/questions/35976102/ggplot-fit-a-curve-geom-smooth-method-nls-with-ci95-bands
 
 
-
-
-
 ###############################
 #checking to see if VERY low iron treatments have noticeable increase in growth rate. 
-  vlow <- subset(mergedata, iron == 50)
+  vlow <- subset(mergedata, iron == 50| iron ==20|iron == 3.75)
 
-ggplot (vlow, aes (x = iron, y = mumax, color = Temperature))+
+ggplot (vlow, aes (x = iron, y = mumax, color = factor(Temperature)))+
   geom_point (size = 3, alpha = 0.6)+
   #scale_y_continuous(breaks = seq(0, 0.4, 0.05))+
   ylab ("Growth rate (d-1)")+
@@ -522,70 +531,352 @@ ggplot (vlow, aes (x = iron, y = mumax, color = Temperature))+
 
 
 #this is doing a statistical test to see the effect of temperature on growth rate under low, intermediate and high iron conditions. 
-vlow <- subset(mergedata, iron == 20)
+#Table 1
+
+vlow <- subset(mergedata, iron >50)
 
 vlow$iron <- as.character(vlow$iron)
 vlow$Temperature <- as.numeric(as.character(vlow$Temperature))
-anovs <- lm(mumax~Temperature, vlow)
+anovs <- aov (mumax~Temperature, vlow)
 
 summary(anovs)
 ```
 
-Plotting Kfevstemp curves
+stats for mono plots using nls
 ```{r}
-summary(monod_1C_rfu)
-summary(monod_3C_rfu)
-summary(monod_6C_rfu)
+### now I want to do stats to see if iron and temprature 
+#interactively influnece growth
+mergedata_sub$Temperature <- as.numeric(mergedata_sub$Temperature)
+
+multiplenonlinear_1<-  nls(mumax ~  ((Vm+a*Temperature) * Fee/((K+a*Temperature*Fee)+Fee)), data =mergedata_sub, 
+    start = list(K=1E-6, Vm = max(mergedata_sub$mumax),a=1))
+
+multiplenonlinear_2<-  nls(mumax ~  ((Vm+a*Temperature) * Fee/(K+Fee)), data =mergedata_sub, 
+    start = list(K=1E-6, Vm = max(mergedata_sub$mumax),a=1))
+
+summary(multiplenonlinear_1)
+
+multiplenonlinear_3<-  nls(mumax ~ (Vm * Fee/((K+a*Temperature)+Fee)), data =mergedata_sub, 
+    start = list(K=1E-6, Vm = max(mergedata_sub$mumax),a=1))
+
+summary(multiplenonlinear)
+
+AIC(multiplenonlinear_1, multiplenonlinear_2, multiplenonlinear_3)
+
+pred <- emmeans(
+  multiplenonlinear_1, # specify model 
+  c("Fee", "Temperature"), # specify predictors
+  # specify at what points you want to get predictions:
+  at = list(
+    Fee = seq(8, 1400, length.out = 200),
+    Temperature = c(1, 3, 6)))
+
+multiplemu <- as.data.frame(pred)
+
+ggplot(multiplemu, aes(x = Fee, y = emmean,group = factor(Temperature),color = factor(Temperature))) +
+  geom_line()+
+  stat_summary(data = mergedata_sub, aes(x = Fee, y = mumax))
+```
 
 
-Kfe <- c(26.647, 31.2865, 67.2654)
-Kfe_CI <- c(3.57, 3.14, 12.55)
-Temperature <- c(6, 3, 1)
-mu <- c(0.352, 0.271, 0.178)
-mu_CI <- c(0.01, 0.007, 0.01)
+stats for monod plots using nlme
+```{r}
+mergedata_sub$Temperature <- as.numeric(mergedata_sub$Temperature)
+mergedata_sub$replicate <- paste(mergedata_sub$Temperature,'C_',mergedata_sub$Fee)
+
+#Temperature as a factor
+# mumax_nlme_1 <- nlme(mumax ~ SSmicmen(Fee, Vm, K), 
+#                       fixed = list(Vm+K~as.factor(Temperature)), 
+#                       random = Vm~1 | replicate, 
+#                       start = list(fixed = c(Vm = c(0.1, 0.3, 0.4), K= c(25, 40, 60))),
+#                       data = mergedata_sub)
+# 
+# 
+# mumax_nlme_1b <- nlme(mumax ~ SSmicmen(Fee, Vm, K), 
+#                       fixed = list(Vm+K~as.factor(Temperature)), 
+#                       random = Vm+K~1 | replicate, 
+#                       start = list(fixed = c(Vm = c(0.1, 0.3, 0.4), K= c(25, 40, 60))),
+#                       data = mergedata_sub)
+
+#this has the lowest AIC from random effects
+##DO NOT TOUCH THIS
+mumax_nlme_1 <- nlme(mumax ~ SSmicmen(Fee, Vm, K), 
+                      fixed = list(Vm+K~as.factor(Temperature)), 
+                      random = K~1 | replicate, 
+                      start = list(fixed = c(Vm = c(0.1, 0.3, 0.4), K= c(25, 40, 60))),
+                      data = mergedata_sub)
+summary(mumax_nlme_1)
+mumax_nlme_2 <- nlme(mumax ~ SSmicmen(Fee, Vm, K), 
+                      fixed = list(Vm~as.factor(Temperature), K~1), 
+                      random = Vm~1 | replicate, 
+                      start = list(fixed = c(Vm = c(0.1, 0.3,0.4), K= c(35))),
+                      data = mergedata_sub)
+
+mumax_nlme_3 <- nlme(mumax ~ SSmicmen(Fee, Vm, K), 
+                      fixed = list(K~as.factor(Temperature), Vm~1), 
+                      random = Vm~1 | replicate, 
+                      start = list(fixed = c(Vm = c(0.3), K= c(20,40,60))),
+                      data = mergedata_sub)
+
+mumax_nlme_4 <- nlme(mumax ~ SSmicmen(Fee, Vm, K), 
+                      fixed = list(Vm+K~1), 
+                      random = Vm~1 | replicate, 
+                      start = list(fixed = c(Vm = c(0.3), K= c(50))),
+                      data = mergedata_sub)
+
+anova(mumax_nlme_1, mumax_nlme_2, mumax_nlme_3)
+
+summary(mumax_nlme_3)
+#$tTable[,2]
+      
+newdat <- expand.grid(Temperature = c (1,3,6), Fee=1:1450)
+newdat$wpred <- predict(mumax_nlme_1,newdat,level=0)
+
+ggplot (newdat,aes(x = Fee, y = wpred, group = factor(Temperature), color = factor(Temperature)))+
+  geom_line(size = 1.5)+
+  #scale_x_log10()+
+  #geom_point(data=mergedata_sub, aes(x = Fee, y = mumax, color = factor(Temperature)), size = 4)+
+  stat_summary(data=mergedata_sub,aes(x = Fee, y = mumax, color = factor(Temperature)), size = 1.5)+
+  scale_color_manual(values = c("black", "orange", "red", "darkred"))+
+  ylab (expression (Growth~rate~ (mu~d^-1)))+
+  xlab (expression (Fe*"'"~ (pmol~L^-1)))+
+  theme(axis.text.x = element_text (angle = 60, hjust =1))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold", size = 26, color = "black"),
+        axis.title.x=element_text(size=32,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 26, color = "black"),
+        axis.title.y=element_text(size=32,face="bold"))+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  labs(col="Temperature (°C)")+
+  theme(panel.grid = element_blank())
 
 
+
+
+
+#Temperature as continuous variable
+mumax_nlme_1c <- nlme(mumax ~ SSmicmen(Fee, Vm, K), 
+                      fixed = list(Vm+K~Temperature), 
+                      random = Vm~1 | replicate, 
+                      start = list(fixed = c(Vm = c(0.1, 0.3), K= c(50,60))),
+                      data = mergedata_sub)
+
+
+
+
+summary(mumax_nlme_1c)
+mumax_nlme_2c <- nlme(mumax ~ SSmicmen(Fee, Vm, K), 
+                      fixed = list(Vm~Temperature, K~1), 
+                      random = K~1 | replicate, 
+                      start = list(fixed = c(Vm = c(0.1, 0.3), K= c(50))),
+                      data = mergedata_sub)
+
+mumax_nlme_3c <- nlme(mumax ~ SSmicmen(Fee, Vm, K), 
+                      fixed = list(K~Temperature, Vm~1), 
+                      random = Vm~1 | replicate, 
+                      start = list(fixed = c(Vm = c(0.2), K= c(50,60))),
+                      data = mergedata_sub)
+summary(mumax_nlme_1c)
+
+anova(mumax_nlme_1c, mumax_nlme_2c)
+```
+
+
+looking at logistic fits or different fits for the growth curves. 
+```{r}
+####this is a test for logistic curve
+ggplot(monod6C_rfu, aes(x = Fee, y = mumax))+
+  geom_point(size=5)+
+  stat_function(fun=logis6C)+
+  theme_bw()
+
+logisticmodel<- nls(mumax ~ K / (1 + exp(Po + r * Fee)), data = monod6C_rfu, start=list(Po=0, r=-0.0035, K= 0.5)) #this is with manual input of initial values
+summary(logisticmodel) #from this summary, we can build a model line for the data. 
+
+logis6C <- function (x){
+  0.31162/(1+exp(1.528777-0.055465*x))
+}  #like this. 
+
+
+#this is with manual input of initial values
+plot(logisticmodel)
+summary(logisticmodel)
+
+logis <- nls(mumax~SSlogis(Fee, phi1, phi2, phi3), data = monod6C_rfu)
+
+summary(logis) #this automatically pick initial values
+ plot(logis)#look at residuals
+
+phi1<-coef(logis)[1]
+phi2<-coef(logis)[2]
+phi3<-coef(logis)[3]
+
+x<- c(min(monod6C_rfu$Fee):max(monod6C_rfu$Fee))
+y <- predict(logis, list(Fee = x))
+predictz<-data.frame(x,y)
+ggplot(predictz, aes(x = x, y = y))+
+         geom_point()
+
+
+ggplotly (x)
+
+#http://strata.uga.edu/8370/lecturenotes/nonlinearRegression.html
+
+
+  
+
+
+# 
+#logis6C <- function (x){
+  #phi1/(1+exp((phi2-x)/phi3))
+ #}
+
+
+# logis3C <- function (x){
+#   0.239344/(1+exp(1.493386-0.048243*x))
+# }
+
+# fitlogis<-predict(as.lm.nls(logis), interval = "confidence") 
+# logis$lowerfit<-fitlogis[,2]
+# logis$upperfit<-fitlogis[,3]
+
+
+#http://strata.uga.edu/8370/lecturenotes/nonlinearRegression.html
+
+
+#temp1<- coef(monod_0.7C_rfu) %>%data.frame %>% `colnames<-`("0.7C")
+
+```
+
+#non-linear mixed models
+```{r}
+require(nlme)
+mergedata_sub$Fee <- as.numeric(mergedata_sub$Fee)
+
+
+logistic <- nls(mumax~SSlogis(Temperature, phi1, phi2, phi3), data = mergedata_sub)
+
+summary(logistic)
+
+linear <- lm(mumax ~Temperature*log(Fee), data = mergedata_sub)
+summary(linear)
+```
+
+
+Plotting Kfe_vs_temp curves
+```{r}
+#new stuff with logistic curves
+#Kfe <- c(27.562780, 30.955626, 67.26544)
+#Kfe_CI <- c(2.07817, 1.30554, 12.55143)
+
+#mu <- c(0.311621, 0.239344, 0.17837)
+#mu_CI <- c(0.007725, 0.003301, 0.01083)
+#Temperature <- c(6, 3, 1)
+
+#Km_temp <- data.frame(Kfe, Temperature, Kfe_CI, mu, mu_CI)
+
+#old stuff using only monod
+# Kfe <- c(26.647, 31.2865, 67.2654)
+# Kfe_CI <- c(3.57, 3.14, 12.55)
+# mu <- c(0.352, 0.271, 0.178)
+# mu_CI <- c(0.01, 0.007, 0.01)
+# Temperature <- c(6, 3, 1)
+
+summary(mumax_nlme_1)
+Kfe <- c(65.068, 28.24254, 21.1075)
+Kfe_CI <- c(18.1736, 19.43, 18.78)
+mu <- c(0.1768, 0.26479, 0.33019)
+mu_CI <- c(0.0155,0.02077,0.019027)
+
+Temperature <- c(1,3,6)
 Km_temp <- data.frame(Kfe, Temperature, Kfe_CI, mu, mu_CI)
 
 
+b <- Km_temp$Kfe
+a <- Km_temp$Temperature
+plot(a,b)
+model_selection(data=cbind(a, b), name_results = "AICresults", name_dir = "C:/Users/Loay Jabre/Desktop/PhD/Growth Experiment/RFU-growth-experiment/GrowthPaper")
 
-line_km <- function(x){
-  (63.976*x^-0.533)
+z <- read.csv("AICresults.csv", sep = ";")
+
+
+monod_fig2 <- function(x){
+  (20.38*x)/((-0.687+x))
 }
 
-line_mu <- function(x){
-  (0.1781*x^0.381)*150
-}
 
-#Or this logarithmic function. 
-#y = 0.096ln(x) + 0.1745
-
-
-#png("figure2_mu&Kfe-vs-temp.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+  
+#Kfe plot
+#png("figure2_A_Kfe-vs-temp.png", width=45*0.75, height=23*0.75, units="cm", res=900)
 ggplot (Km_temp, aes(x = Temperature, y = Kfe))+
-  geom_point(size=5)+
-  stat_function(fun = line_km,size = 0.8 )+
-  stat_function(fun = line_mu,lty = 2, size =0.8)+
-  geom_point(aes( y = mu*150, size = 5),shape=1)+
-  geom_errorbar(aes(ymin = mu*150 - mu_CI*150, ymax = mu*150 +mu_CI*150, width =0.3))+
-  geom_errorbar(aes (ymin = Kfe-Kfe_CI, ymax = Kfe+Kfe_CI, width = 0.3))+   
-  scale_y_continuous (sec.axis = sec_axis( ~./150, name = expression(Maximum~growth~rate~(mu[max]~d^-1))))+
-  theme(axis.text.y.right = element_text(angle = 45, hjust=1))+
-  theme_bw()+
-  theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.x=element_text(size=24,face="bold"), 
-        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.y=element_text(size=24,face="bold"))+
-  #theme (legend.title = element_text (size = 18),
-        #legend.text = element_text(size = 18))+
+  geom_point(size=6)+
+  stat_function(fun = monod_fig2,size = 0.8 )+
+  geom_errorbar(aes (ymin = Kfe-Kfe_CI, ymax = Kfe+Kfe_CI, width = 0.3))+
   xlab(expression (Temperature ~(degree*C)))+
   ylab (expression(K[Fe]~(pmol~Fe~ L^-1)))+
+  #ylim(0,80)+
+  #scale_x_continuous(limits = c (0, 7), breaks = seq (0, 6, by = 1))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold", size = 30, color = "black"),
+        axis.title.x=element_text(size=40,face="bold"),
+        axis.text.y=element_text(face = "bold", size = 30, color = "black"),
+        axis.title.y=element_text(size=35,face="bold"))+
   theme (legend.position = "none")+
   theme(panel.grid = element_blank())
 
+#dev.off()
+
+x<- lm(mu~Temperature, Km_temp)
+summary(x)
+
+line_mu <- function(x){
+  0.02998*x +0.15734
+} #Rsquared = 0.95
+
+#muplot
+png("figure2_B_mu-vs-temp.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+ggplot (Km_temp, aes(x = Temperature, y = mu))+
+  geom_point(size=6)+
+  #stat_function(fun = line_mu,size = 0.8 )+
+  geom_errorbar(aes (ymin = mu-mu_CI, ymax = mu+mu_CI, width = 0.3))+
+  geom_smooth(method = 'lm', formula = y~x, color = "black", se = FALSE)+
+  xlab(expression (Temperature ~(degree*C)))+
+  ylab(expression(Maximum~growth~rate~(mu[max]~d^-1)))+
+  theme_bw()+
+  scale_y_continuous(limits = c (0, 0.4), breaks = seq (0, 0.4, by = 0.1))+
+  scale_x_continuous(limits = c (0, 6.2), breaks = seq (0, 6, by = 1))+
+  theme(axis.text.x=element_text(face = "bold", size = 30, color = "black"),
+        axis.title.x=element_text(size=40,face="bold"),
+        axis.text.y=element_text(face = "bold", size = 30, color = "black"),
+        axis.title.y=element_text(size=28,face="bold"))+
+  theme (legend.position = "none")+
+  theme(panel.grid = element_blank())
+dev.off()
+
+#This makes a plot with two y-axes for putting both Kfe and Mu on the same plot. 
+#png("figure2_mu&Kfe-vs-temp.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+# ggplot (Km_temp, aes(x = Temperature, y = Kfe))+
+#   geom_point(size=5)+
+#   stat_function(fun = line_km,size = 0.8 )+
+#   stat_function(fun = line_mu,lty = 2, size =0.8)+
+#   geom_point(aes( y = mu*150, size = 5),shape=1)+
+#   geom_errorbar(aes(ymin = mu*150 - mu_CI*150, ymax = mu*150 +mu_CI*150, width =0.3))+
+#   geom_errorbar(aes (ymin = Kfe-Kfe_CI, ymax = Kfe+Kfe_CI, width = 0.3))+   
+#   scale_y_continuous (sec.axis = sec_axis( ~./150, name = expression(Maximum~growth~rate~(mu[max]~d^-1))))+
+#   theme(axis.text.y.right = element_text(angle = 45, hjust=1))+
+#   theme_bw()+
+#   theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
+#         axis.title.x=element_text(size=24,face="bold"), 
+#         axis.text.y=element_text(face = "bold", size = 20, color = "black"),
+#         axis.title.y=element_text(size=24,face="bold"))+
+#   #theme (legend.title = element_text (size = 18),
+#         #legend.text = element_text(size = 18))+
+#   xlab(expression (Temperature ~(degree*C)))+
+#   ylab (expression(K[Fe]~(pmol~Fe~ L^-1)))+
+#   theme (legend.position = "none")+
+#   theme(panel.grid = element_blank())
+
   #dev.off()
-
-
 
 
 
@@ -610,12 +901,8 @@ shapiro.test(chla_aov$value)
 kruskal.test(Kfe~Temperature, Km_temp)
 kruskal.test(value~iron, chla)
 
-x<- aov(Kfe~Temperature, Km_temp)
+x<- lm(mu~Temperature, Km_temp)
 summary(x)
-
-
-
-
 ```
 
 Plotting my curves vs mono curves with constant Kfe
@@ -672,15 +959,60 @@ cellsize_growth$adjustedsize <- (cellsize_growth$size+49761)/167118
 cellsize_growth$Temperature<-as.character(cellsize_growth$Temperature)
 cellsize_growth$totaliron_1<-as.character(cellsize_growth$totaliron_1)
 
+### to fit the different curves on the points
+#first look at the data at separate temperatures
+cellsize_growth$replicate <- paste(cellsize_growth$totaliron,"_",cellsize_growth$culturetemp)
+size_1C <- cellsize_growth[cellsize_growth$Temperature ==1,]
+size_3C <- cellsize_growth[cellsize_growth$Temperature ==3,]
+size_6C <- cellsize_growth[cellsize_growth$Temperature ==6,]
 
+#then pick the best model to fit the data at each temperature
+#this helps pick the best model fit based on lowest AIC value. In here, the best was logistic
+# a <- size_1C$Fee
+# b <- size_1C$adjustedsize
+# plot(a,b)
+# model_selection(data=cbind(a, b), name_results = "AICresults", name_dir = "C:/Users/Loay Jabre/Desktop/PhD/Growth Experiment/RFU-growth-experiment/GrowthPaper")
+# z <- read.csv("AICresults.csv", sep = ";")
+
+#then fit the logistic model
+#K = max size
+#r = slope/growth rate
+#Po = initial population size
+size_1C_model <-  nls(adjustedsize ~ K / (1 + exp(Po + r * Fee)), data = size_1C, start=list(Po=0, r=-0.035, K= 5))
+size_3C_model <- nls(adjustedsize ~ K / (1 + exp(Po + r * Fee)), data = size_3C, start=list(Po=0, r=-0.035, K= 5))
+size_6C_model <- nls(adjustedsize ~ K / (1 + exp(Po + r * Fee)), data = size_6C, start=list(Po=0, r=-0.035, K= 5))
+
+summary(size_1C_model)
+summary(size_3C_model)
+summary(size_6C_model)
+
+AIC(size_1C_model, size_3C_model, size_6C_model)
+#then make an equation for the logistic model and include it in the plot
+
+sizelogis1C <- function (x){
+  6.25758/(1+exp(-0.787592-0.019075*x))}  
+
+sizelogis3C <- function (x){
+  5.893112/(1+exp(-0.669305-0.014591*x))}  
+
+sizelogis6C <- function (x){
+  5.7288975/(1+exp(-0.4744982-0.0113583 *x))}  
+
+#this fits a logistic curve individually to each temperature
 #png("figure3a_size_vs_Fe.png", width=45*0.75, height=23*0.75, units="cm", res=900)
-ggplot(cellsize_growth, aes(x=Fee, y=adjustedsize, color = Temperature))+
-  stat_summary(fun.y = mean, geom = "point", size =5, aes(color = Temperature, group = Temperature))+
-  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.08, aes(color = Temperature))+
+ggplot(cellsize_growth, aes(x=Fee, y=adjustedsize, color = factor(Temperature)))+
+  stat_summary(fun.y = mean, geom = "point", size =5, aes(color = factor(Temperature), group = factor(Temperature)))+
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.08, aes(color = factor(Temperature)))+
   scale_color_manual(values = c("black", "orange", "red", "darkred"))+
   theme_bw()+
-  #scale_y_log10()+
+  stat_function(fun = sizelogis1C, color = "black", size = 0.8)+
+  stat_function(fun = sizelogis3C, color = 'orange', size = 0.8)+
+  stat_function(fun = sizelogis6C, color = 'red', size = 0.8)+
+  #stat_function(fun = nlmer_1C, color = "black", size = 0.8)+
+  #stat_function(fun = nlmer_3C, color = 'orange', size = 0.8)+
+  #stat_function(fun = nlmer_6C, color = 'red', size = 0.8)+
   scale_x_log10()+
+  #scale_y_continuous(limits = c(0, 8))+
   ylab(expression (Estimated ~Cell ~Diameter~(mu*m)))+
   xlab (expression (Fe*"'"~ (pmol~L^-1)))+
   theme(axis.text.x=element_text(face = "bold", color = "black", size = 20), axis.title.x=element_text(size=24,face="bold"), axis.text.y=element_text(face = "bold", size = 20, color = "black"), axis.title.y=element_text(size=24,face="bold", color = "black"))+
@@ -689,32 +1021,502 @@ ggplot(cellsize_growth, aes(x=Fee, y=adjustedsize, color = Temperature))+
   labs(col="Temperature (°C)")
 #dev.off()
 
+
+#statistical analysis for Fe and temperature effect on growth
+####this uses nls to look at temperate effect on the different parameters of the logistic curve
+cellsize_growth$Temperature <- as.numeric(cellsize_growth$Temperature)
+
+#multiple_nlsx <-  nls(adjustedsize ~ (Temperature * a*K) / (1 + exp((Po*a*Temperature) + (r*a*Temperature) * Fee)), data = cellsize_growth, start=list(Po=0.5, r=-0.035, K= 5, 0.00000001))
+
+multiple_nls1 <-  nls(adjustedsize ~ (a*Temperature + K) / (1 + exp((Po+a*Temperature) + (r+a*Temperature) * Fee)), data = cellsize_growth, start=list(Po=0.5, r=-0.035, K= 5, a = 0.00000001))
+
+multiple_nls1b <-  nls(adjustedsize ~  (a*Temperature) + ((K) / (1 + exp(Po + r * Fee))), data = cellsize_growth, start=list(Po=0.5, r=-0.035, K= 5, a = 0.0000001))
+
+multiple_nls2 <-  nls(adjustedsize ~ (a*Temperature + K) / (1 + exp((Po+a*Temperature) + (r) * Fee)), data = cellsize_growth, start=list(Po=0.5, r=-0.035, K= 5, a = 0.00000001))
+
+multiple_nls3 <-  nls(adjustedsize ~ (a*Temperature + K) / (1 + exp((Po) + (r) * Fee)), data = cellsize_growth, start=list(Po=0.5, r=-0.035, K= 5, a = 0.00000001))
+
+multiple_nls4 <-  nls(adjustedsize ~  (K) / (1 + exp(Po + r * Fee)) , data = cellsize_growth, start=list(Po=0.5, r=-0.035, K= 5))
+
+#multiple_nls <-  nls(adjustedsize ~ (K) / (1 + exp((Po+a*Temperature) + (r+a*Temperature) * Fee)), data = cellsize_growth, start=list(Po=0.5, r=-0.035, K= 5, a = 0.00000001))
+#multiple_nls7 <-  nls(adjustedsize ~  a*Temperature, start = list(a = 0.000001),  data = cellsize_growth)
+
+summary(multiple_nls1b)
+
+anova(multiple_nls1,
+    #multiple_nls1b, 
+    multiple_nls2,
+    multiple_nls3,
+    multiple_nls4)
+  #This shows that NLS3 has the lowest AIC. So we'
+
+anova(multiple_nls1, multiple_nls3)
+
+summary(multiple_nls1)
+pred <- emmeans(
+  multiple_nls1b, # specify model 
+  c("Fee", "Temperature"), # specify predictors
+  # specify at what points you want to get predictions:
+  at = list(
+    Fee = seq(8, 1400, length.out = 200),
+    Temperature = c(1, 3, 6)))
+
+sizefits_nls <- data.frame(pred)
+
+#this plots the model output, and add the raw datapoints on top. 
+ggplot(sizefits_nls, aes(x=Fee, y=emmean, color = factor(Temperature)))+
+  scale_color_manual(values = c("black", "orange", "red"))+
+  theme_bw()+
+  geom_line()+
+  scale_fill_manual(values = c("black", "orange", "red"))+
+  geom_ribbon(data = sizefits_nls, aes(ymin=sizefits_nls$asymp.LCL, ymax=sizefits_nls$asymp.UCL, fill = factor(Temperature)), linetype=0, alpha=0.2)+
+ #geom_errorbar(data = mydata, aes(ymin=asymp.LCL, ymax=asymp.UCL))+
+#geom_errorbar(data = mydata, aes(ymin=lower.CL, ymax=upper.CL))+
+  stat_summary(data=cellsize_growth,aes(x = Fee, y = adjustedsize), size = 1.2)+
+  #geom_point(data = cellsize_growth, aes(x = Fee, y =adjustedsize))+
+  scale_x_log10()+
+  ylab(expression (Estimated ~Cell ~Diameter~(mu*m)))+
+  xlab (expression (Fe*"'"~ (pmol~L^-1)))+
+  theme(axis.text.x=element_text(face = "bold", color = "black", size = 20), axis.title.x=element_text(size=24,face="bold"), axis.text.y=element_text(face = "bold", size = 20, color = "black"), axis.title.y=element_text(size=24,face="bold", color = "black"))+
+  theme(panel.grid = element_blank())+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  labs(col="Temperature (°C)")
+
+
+
+
+nlsselfstart_1 <- nls(adjustedsize ~ SSlogis(Fee, Asym+(a*Temperature) , xmid+(a*Temperature), scal+(a*Temperature)), 
+                      start = list(Asym = c(4), xmid= c(80), scal = c(5), a = 0.00000001),
+                      data = cellsize_growth)
+
+nlsselfstart_2 <- nls(adjustedsize ~ SSlogis(Fee, Asym , xmid+(a*Temperature), scal+(a*Temperature)), 
+                      start = list(Asym = c(4), xmid= c(80), scal = c(5), a = 0.00000001),
+                      data = cellsize_growth)
+
+nlsselfstart_3 <- nls(adjustedsize ~ SSlogis(Fee, Asym+(a*Temperature) , xmid, scal+(a*Temperature)), 
+                      start = list(Asym = c(4), xmid= c(80), scal = c(5), a = 0.00000001),
+                      data = cellsize_growth)
+
+nlsselfstart_4 <- nls(adjustedsize ~ SSlogis(Fee, Asym+(a*Temperature) , xmid+(a*Temperature), scal), 
+                      start = list(Asym = c(4), xmid= c(80), scal = c(5), a = 0.00000001),
+                      data = cellsize_growth)
+
+nlsselfstart_5 <- nls(adjustedsize ~ SSlogis(Fee, Asym, xmid, scal), 
+                      start = list(Asym = c(4), xmid= c(80), scal = c(5)),
+                      data = cellsize_growth)
+
+
+summary(nlsselfstart_4)
+    
+anova(nlsselfstart_1,
+    nlsselfstart_2, 
+    nlsselfstart_3, 
+     nlsselfstart_4, 
+    nlsselfstart_5)
+
+
+#nlsselfstart <- function (x){
+  #Asym/(1+exp((xmid-x)/scal))}
+
+
+summary(nlsselfstart_3)
+
+
+nlsselfstart_1_1 <- function (x){
+  (6.6025+(-0.20409*1))/(1+exp((-44.328-x)/67.11692))}
+
+nlsselfstart_1_3 <- function (x){
+  (6.6025+(-0.20409*3))/(1+exp((-44.328-x)/67.11692))}
+
+nlsselfstart_1_6 <- function (x){
+  (6.6025+(-0.20409*6))/(1+exp((-44.328-x)/67.11692))}
+
+ggplot(cellsize_growth, aes(x=Fee, y=adjustedsize, color = factor(Temperature)))+
+  scale_color_manual(values = c("black", "orange", "red"))+
+  theme_bw()+
+  scale_fill_manual(values = c("black", "orange", "red"))+
+  stat_function(fun = nlsselfstart_1_1,color = "black")+
+   stat_function(fun = nlsselfstart_1_3, color = "orange")+
+   stat_function(fun = nlsselfstart_1_6, color = "red")+
+  stat_summary(data=cellsize_growth,aes(x = Fee, y = adjustedsize), size = 1.2)+
+  #geom_point(data = cellsize_growth, aes(x = Fee, y =adjustedsize))+
+  scale_x_log10()+
+  ylab(expression (Estimated ~Cell ~Diameter~(mu*m)))+
+  xlab (expression (Fe*"'"~ (pmol~L^-1)))+
+  theme(axis.text.x=element_text(face = "bold", color = "black", size = 20), axis.title.x=element_text(size=24,face="bold"), axis.text.y=element_text(face = "bold", size = 20, color = "black"), axis.title.y=element_text(size=24,face="bold", color = "black"))+
+  theme(panel.grid = element_blank())+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  labs(col="Temperature (°C)")
+###################
+#### This uses nlmer, with replicates as random effects. it produces exactly the same thing as using the nls function at each temperature separately. I don't know how to incorporate temperature into this. 
+#could not do anova on these because of the different sizes of datasets. So, we will remove some rows 
+
+## no difference between nlmer and nls up here. 
+
+#Want to do nlmer with temperature effct
+
+startvec<- c(Asym = 5, xmid = 80, scal = 5)
+
+startvec_1<- c(Asym = 5, xmid = 80, scal = 5)
+
+
+nlmer_modelfull <-  nlmer(adjustedsize ~ SSlogis(Fee, Asym, xmid, scal) ~Asym|Temperature,
+                            data =cellsize_growth, 
+                          start = startvec_1)
+
+nlmer_model_1C <-  nlmer(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal) ~Asym|replicate, data =size_3C, start = startvec)
+nlmer_model_3C <-  nlmer(adjustedsize ~ SSlogis(Fee, Asym, xmid, scal) ~Asym|replicate, data =size_3C, start = startvec)
+nlmer_model_6C <-  nlmer(adjustedsize ~ SSlogis(Fee, Asym, xmid, scal) ~Asym|replicate, data =size_6C, start = startvec)
+
+# startvec_micmen <- c(K = 10, Vm = 6 )
+# nlmer_model_1C_micmen <-  nlmer(adjustedsize ~ SSmicmen(Fee, K, Vm) ~K|replicate, data =size_1C, start = startvec_micmen)
+
+# nlmer_1C_micmen <- function (x){
+#   (5.0111*x)/(3.90204+x)
+#   
+# }
+#anova(nlmer_model_1C, nlmer_model_3C, nlmer_model_6C)
+
+nlmer_1C <- function (x){
+  6.25458/(1+exp((-41.28884-x)/52.42421))
+}
+
+nlmer_3C <- function (x){
+  5.8847/(1+exp((-44.9008-x)/67.2962))
+}
+
+nlmer_6C <- function (x){
+  5.73680/(1+exp((-43.7088-x)/90.35986))
+ }
+
+############
+#looking at lmer model to include replicates as random effects. 
+lmer_1 <- lmer (adjustedsize ~ as.numeric(Temperature)*log(Fee) +(1|replicate),  data= cellsize_growth)
+lmer_1b <- lmer (adjustedsize ~ factor(Temperature)*log(Fee) +(1|replicate),  data= cellsize_growth)
+lmer_2 <- lmer (adjustedsize ~ factor(Temperature)+log(Fee) +(1|replicate),  data= cellsize_growth)
+lmer_3 <- lmer (adjustedsize ~ log(Fee):as.numeric(Temperature) +(1|replicate),  data= cellsize_growth)
+lmer_4 <- lmer (adjustedsize ~ log(Fee) +(1|replicate),  data= cellsize_growth)
+lmer_5 <- lmer (adjustedsize ~ as.numeric(Temperature) +(1|replicate),  data= cellsize_growth)
+summary(lmer_1b)
+
+anova(lmer_1,lmer_2, lmer_3, lmer_4, lmer_5 )
+
+pred <- emmeans(
+  lmer_2, # specify model 
+  c("Fee", "Temperature"), # specify predictors
+  # specify at what points you want to get predictions:
+  at = list(
+    Fee = seq(8, 1400, length.out = 100),
+    Temperature = c(1, 3, 6)
+  )
+)
+
+sizefits_linear_lmer <- data.frame(pred)
+
+###do a linear model on log transformed Fee values
+lm_1 <- lm (adjustedsize ~ (Temperature)*log(Fee),  data= cellsize_growth)
+lm_2 <- lm (adjustedsize ~ log(Fee)+(Temperature),  data= cellsize_growth)
+lm_3 <- lm (adjustedsize ~ (Temperature):log(Fee),  data= cellsize_growth)
+lm_4 <- lm (adjustedsize ~ log(Fee),  data= cellsize_growth)
+lm_5 <- lm (adjustedsize ~ (Temperature),  data= cellsize_growth)
+
+summary(lm_1)
+AIC(lm_1, lm_2, lm_3, lm_4, lm_5)
+plot(lm_1)
+
+pred <- emmeans(
+  lm_1, # specify model 
+  c("Fee", "Temperature"), # specify predictors
+  # specify at what points you want to get predictions:
+  at = list(
+    Fee = seq(8, 1400, length.out = 200),
+    Temperature = c(1, 3, 6)))
+
+sizefits_linear_lm <- data.frame(pred)
+
+ggplot(sizefits_linear_lm, aes(x=Fee, y=emmean, color = factor(Temperature)))+
+  scale_color_manual(values = c("black", "orange", "red", "darkred"))+
+  theme_bw()+
+  geom_line()+
+  scale_fill_manual(values = c("black", "orange", "red"))+
+  geom_ribbon(data = sizefits_linear_lm, aes(ymin=sizefits_linear_lm$lower.CL, ymax=sizefits_linear_lm$upper.CL, fill = factor(Temperature)), linetype=0, alpha=0.1)+
+  stat_summary(data=cellsize_growth,aes(x = Fee, y = adjustedsize), size = 1.2)+
+  scale_x_log10()+
+  ylab(expression (Estimated ~Cell ~Diameter~(mu*m)))+
+  xlab (expression (Fe*"'"~ (pmol~L^-1)))+
+  theme(axis.text.x=element_text(face = "bold", color = "black", size = 20), axis.title.x=element_text(size=24,face="bold"), axis.text.y=element_text(face = "bold", size = 20, color = "black"), axis.title.y=element_text(size=24,face="bold", color = "black"))+
+  theme(panel.grid = element_blank())+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  labs(col="Temperature (°C)")
+
+
+#### GAM 
+require("mgcv")
+#K = 8 is a good smoother
+gam_1 <- gam (adjustedsize ~ s((Fee),bs =  "cr", k = 8) + s(Temperature, k = 3), data= cellsize_growth)
+summary(gam_1)
+gam_2 <- gam (adjustedsize ~ s((Fee),bs =  "tp") + s(Temperature, k = 3),  data= cellsize_growth)
+gam_3 <- gam (adjustedsize ~ s((Fee),bs =  "ps", k = 8) + s(Temperature, k = 3),  data= cellsize_growth)
+
+AIC(gam_1, gam_2, gam_3, gam_4)
+
+pred <- emmeans(
+  gam_1, # specify model 
+  c("Fee", "Temperature"), # specify predictors
+  # specify at what points you want to get predictions:
+  at = list(
+    Fee = seq(8, 1400, length.out = 200),
+    Temperature = c(1, 3, 6)))
+
+sizefits_gam<- data.frame(pred)
+
+ggplot(sizefits_gam, aes(x=Fee, y=emmean, color = factor(Temperature)))+
+  scale_color_manual(values = c("black", "orange", "red", "darkred"))+
+  theme_bw()+
+  geom_line()+
+  scale_fill_manual(values = c("black", "orange", "red"))+
+  #geom_ribbon(data = sizefits_gam, aes(ymin=sizefits_gam$lower.CL, ymax=sizefits_gam$upper.CL, fill = factor(Temperature)), linetype=0, alpha=0.1)+
+  #geom_errorbar(data = sizefits_gam, aes(ymin=lower.CL, ymax=upper.CL))+
+  #geom_point(data=cellsize_growth, aes(x=Fee, y = adjustedsize))+
+  stat_summary(data=cellsize_growth,aes(x = Fee, y = adjustedsize), size = 1.2)+
+  scale_x_log10()+
+  ylab(expression (Estimated ~Cell ~Diameter~(mu*m)))+
+  xlab (expression (Fe*"'"~ (pmol~L^-1)))+
+  theme(axis.text.x=element_text(face = "bold", color = "black", size = 20), axis.title.x=element_text(size=24,face="bold"), axis.text.y=element_text(face = "bold", size = 20, color = "black"), axis.title.y=element_text(size=24,face="bold", color = "black"))+
+  theme(panel.grid = element_blank())+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  labs(col="Temperature (°C)")
+
 #------------------------------
+#comparing fixed and mixed effects using nlme
+cellsize_growth$Temperature <-as.numeric(cellsize_growth$Temperature)
+cellsize_growth[70,] <- cellsize_growth[37,]
+
+#will do temperature as a factor here, but can be done just as easily with temperature as a number. you'll just need two starting values (be careful)
+
+#no temperature effect at all (random effects determined through lowest AIC)
+sizefit_nlme1 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(Asym+xmid+scal ~1), 
+                      random = scal+Asym~1 | replicate, 
+                      start = list(fixed = c(Asym = c(6), xmid= c(80), scal = c(6))), 
+                      data = cellsize_growth)
+
+#temperature effect only on asymptote
+sizefit_nlme2 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(Asym~Temperature, xmid+scal~1), 
+                      random = Asym~1 | replicate, 
+                      start = list(fixed = c(Asym = c(5,6), xmid= c(75), scal = c(5))),
+                      #start = list(fixed = c(Asym = c(5,6,7), xmid= c(80), scal = c(6))),
+                      data = cellsize_growth)
+
+#temperature effect on scal and asymptote
+sizefit_nlme3<- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(scal+Asym~Temperature, xmid ~1), 
+                      random = Asym~1|replicate, 
+                      start = list(fixed = c(Asym = c(5,6), xmid= c(80), scal = c(5,6))),
+                     # start = list(fixed = c(Asym = c(5,6,7), xmid= c(80), scal = c(5,6,7))),
+                      data = cellsize_growth)
+
+
+
+#temperature effect on xmid and asymptote
+# sizefit_nlme3b<- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+#                       fixed = list(xmid+Asym~Temperature, scal ~1), 
+#                       random = Asym~1|replicate, 
+#                       start = list(fixed = c(Asym = c(5,6), xmid= c(70,80), scal = 6)),
+#                       #start = list(fixed = c(Asym = c(5,6,7), xmid= c(70, 75, 80), scal = c(6))),
+#                       data = cellsize_growth)
+
+
+#most complex model, where temperature affects all of the parameters. 
+sizefit_nlme4 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(Asym+xmid+scal~Temperature), 
+                      random = scal+xmid~1 | replicate, 
+                      start = list(fixed = c(Asym = c(5,6), xmid= c(75, 80), scal = c(5,6))),
+                      #start = list(fixed = c(Asym = c(4,5,6), xmid= c(70,75,85), scal = c(5,6,7))),
+                      data = cellsize_growth)
+
+
+anova(sizefit_nlme1,sizefit_nlme2, sizefit_nlme3, sizefit_nlme4)
+anova(sizefit_nlme1, sizefit_nlme2)
+
+#looks at the summary for mean [,1], and standard error  [,2]
+summary(sizefit_nlme1)$tTable[,2]
+
+newdat <- expand.grid(Temperature = c (1,3,6), Fee=7:1450)
+newdat$wpred <- predict(sizefit_nlme3,newdat,level=0)
+
+ggplot (newdat,aes(x = Fee, y = wpred, group = factor(Temperature), color = factor(Temperature)))+
+  geom_line(size = 1)+
+  stat_summary(data=cellsize_growth,aes(x = Fee, y = adjustedsize, color = factor(Temperature)), size = 1.2)+
+  scale_color_manual(values = c("black", "orange", "red", "darkred"))+
+  scale_x_log10()+
+  theme_bw()+
+  ylab(expression (Estimated ~Cell ~Diameter~(mu*m)))+
+  xlab (expression (Fe*"'"~ (pmol~L^-1)))+
+  theme(axis.text.x=element_text(face = "bold", color = "black", size = 20), axis.title.x=element_text(size=24,face="bold"), axis.text.y=element_text(face = "bold", size = 20, color = "black"), axis.title.y=element_text(size=24,face="bold", color = "black"))+
+  theme(panel.grid = element_blank())+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  labs(col="Temperature (°C)")
+
+```
+
+cellsize stats using nlme
+```{r}
+cellsize_growth$Temperature <-as.numeric(cellsize_growth$Temperature)
+cellsize_growth[70,] <- cellsize_growth[37,]
+
+#doing this like in the Schaum paper 
+sizefit_nlme_1 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(Asym+xmid+scal~Temperature), 
+                      random = Asym~1 | replicate, 
+                      start = list(fixed = c(Asym = c(5,6), xmid= c(75, 80), scal = c(5,6))),
+                      #start = list(fixed = c(Asym = c(4,5,6), xmid= c(70,75,85), scal = c(5,6,7))),
+                      data = cellsize_growth)
+
+
+
+sizefit_nlme_2 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(xmid+scal~Temperature, Asym~1), 
+                      random = xmid~1 | replicate, 
+                      start = list(fixed = c(Asym = c(6), xmid= c(75, 80), scal = c(5,6))),
+                      #start = list(fixed = c(Asym = c(4,5,6), xmid= c(70,75,85), scal = c(5,6,7))),
+                      data = cellsize_growth)
+
+sizefit_nlme_3 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(Asym+scal~Temperature, xmid~1), 
+                      random = Asym~1 | replicate, 
+                      start = list(fixed = c(Asym = c(5,6), xmid= c(75), scal = c(5,6))),
+                      #start = list(fixed = c(Asym = c(4,5,6), xmid= c(70,75,85), scal = c(5,6,7))),
+                      data = cellsize_growth)
+
+sizefit_nlme_4 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(xmid+Asym~Temperature, scal~1), 
+                      random = Asym~1 | replicate, 
+                      start = list(fixed = c(Asym = c(5,6), xmid= c(75, 80), scal = c(6))),
+                      #start = list(fixed = c(Asym = c(4,5,6), xmid= c(70,75,85), scal = c(5,6,7))),
+                      data = cellsize_growth)
+
+
+AIC(sizefit_nlme_1,sizefit_nlme_2,sizefit_nlme_3, sizefit_nlme_4)
+
+
+anova(sizefit_nlme_4)
+
+summary(sizefit_nlme_4)
+#$tTable[,2]
+      
+newdat <- expand.grid(Temperature = c (1,3,6), Fee=7:1450)
+newdat$wpred <- predict(sizefit_nlme_4,newdat,level=0)
+
+ggplot (newdat,aes(x = Fee, y = wpred, group = factor(Temperature), color = factor(Temperature)))+
+  geom_line(size = 1)+
+  stat_summary(data=cellsize_growth,aes(x = Fee, y = adjustedsize, color = factor(Temperature)), size = 1.2)+
+  scale_color_manual(values = c("black", "orange", "red", "darkred"))+
+  scale_x_log10()+
+  theme_bw()+
+  ylab(expression (Estimated ~Cell ~Diameter~(mu*m)))+
+  xlab (expression (Fe*"'"~ (pmol~L^-1)))+
+  theme(axis.text.x=element_text(face = "bold", color = "black", size = 20), axis.title.x=element_text(size=24,face="bold"), axis.text.y=element_text(face = "bold", size = 20, color = "black"), axis.title.y=element_text(size=24,face="bold", color = "black"))+
+  theme(panel.grid = element_blank())+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  labs(col="Temperature (°C)")
+
+
+#quasiR2
+#https://rpubs.com/RobinLovelace/nls-function
+
+#http://rstudio-pubs-static.s3.amazonaws.com/28730_850cac53898b45da8050f7f622d48927.html
+
+#https://stat.ethz.ch/pipermail/r-help/2005-November/082071.html
+
+
+##using temperature as a factor
+sizefit_nlme_1 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(Asym+xmid+scal~as.factor(Temperature)), 
+                      random = Asym~1 | replicate, 
+                      #start = list(fixed = c(Asym = c(5,6), xmid= c(75, 80), scal = c(5,6))),
+                      start = list(fixed = c(Asym = c(4,5,6), xmid= c(70,75,85), scal = c(5,6,7))),
+                      data = cellsize_growth)
+
+sizefit_nlme_2 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(xmid+scal~as.factor(Temperature), Asym~1), 
+                      random = xmid~1 | replicate, 
+                      #start = list(fixed = c(Asym = c(6), xmid= c(75, 80), scal = c(5,6))),
+                      start = list(fixed = c(Asym = c(5), xmid= c(70,75,85), scal = c(5,6,7))),
+                      data = cellsize_growth)
+
+sizefit_nlme_3 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(Asym+scal~as.factor(Temperature), xmid~1), 
+                      random = Asym~1 | replicate, 
+                      #start = list(fixed = c(Asym = c(5,6), xmid= c(75), scal = c(5,6))),
+                      start = list(fixed = c(Asym = c(4,5,6), xmid= c(75), scal = c(5,6,7))),
+                      data = cellsize_growth)
+
+
+
+sizefit_nlme_4 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(xmid+Asym~as.factor(Temperature), scal~1), 
+                      random = xmid~1 | replicate, 
+                      #start = list(fixed = c(Asym = c(5,6), xmid= c(75, 80), scal = c(6))),
+                      start = list(fixed = c(Asym = c(4,5,6), xmid= c(70,75,85), scal = c(6))),
+                      data = cellsize_growth)
+
+#only the Asym was significant, so: 
+sizefit_nlme_5 <- nlme(adjustedsize ~ SSlogis(Fee, Asym , xmid, scal), 
+                      fixed = list(Asym~as.factor(Temperature), xmid+scal~1), 
+                      random = Asym~1 | replicate, 
+                      #start = list(fixed = c(Asym = c(5,6), xmid= c(75, 80), scal = c(6))),
+                      start = list(fixed = c(Asym = c(4,5,6), xmid= c(75), scal = c(6))),
+                      data = cellsize_growth)
+
+anova(sizefit_nlme_1,sizefit_nlme_3)
+
+summary(sizefit_nlme_3)
+newdat <- expand.grid(Temperature = c (1,3,6), Fee=7:1450)
+newdat$wpred <- predict(sizefit_nlme_4,newdat,level=0)
+
+ggplot (newdat,aes(x = Fee, y = wpred, group = factor(Temperature), color = factor(Temperature)))+
+  geom_line(size = 1)+
+  stat_summary(data=cellsize_growth,aes(x = Fee, y = adjustedsize, color = factor(Temperature)), size = 1.2)+
+  scale_color_manual(values = c("black", "orange", "red", "darkred"))+
+  scale_x_log10()+
+  theme_bw()+
+  ylab(expression (Estimated ~Cell ~Diameter~(mu*m)))+
+  xlab (expression (Fe*"'"~ (pmol~L^-1)))+
+  theme(axis.text.x=element_text(face = "bold", color = "black", size = 20), axis.title.x=element_text(size=24,face="bold"), axis.text.y=element_text(face = "bold", size = 20, color = "black"), axis.title.y=element_text(size=24,face="bold", color = "black"))+
+  theme(panel.grid = element_blank())+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  labs(col="Temperature (°C)")
+
+```
+
+
+```{r}
 #this shows that at lower Fe concentrations, temperature reduces size more than at higher Fe concentrations. 
 cellsize_growth$totaliron_1 <- as.factor(cellsize_growth$totaliron_1)
-
 cellsize_growth$Temperature <- as.factor(cellsize_growth$Temperature)
 
 #png("figure3b_size_vs_temperature.png", width=45*0.75, height=23*0.75, units="cm", res=900)
-ggplot(cellsize_growth, aes(x=totaliron_1, y=adjustedsize, color = Temperature))+
- geom_violin(trim = FALSE, color = "white", fill = "black",alpha = 0.15, aes(group = totaliron_1))+
-  #geom_smooth(geom = "line",span = 20,se = FALSE, aes (group = Temperature))+
-  geom_point(alpha = 0.7, aes(size = adjustedsize))+
-    scale_size_continuous(range = c(1,10))+
-      scale_x_discrete (limits = c("3.75", "10", "15", "20", "35", "50", "100", "500"))+
-   scale_color_manual(values = c("black", "orange", "red"))+
-  theme_bw()+
-    ylab (Estimated ~Cell ~Diameter~(mu*m))+
-  xlab (expression(Fe[Total]~(nmol~L^-1)))+
-  theme(axis.text.x=element_text(face = "bold", color = "black", size = 20),
-        axis.title.x=element_text(size=24,face="bold"), 
-        axis.text.y=element_text(face = "bold", size = 20, color = "black"),
-        axis.title.y=element_text(size=24,face="bold", color = "black"))+
-  theme(panel.grid = element_blank()) +
-labs(col="Temperature (°C)")+
-   labs(size="ECD (??m)")+
-  guides(colour = guide_legend(override.aes = list(size=3)))+
-   theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))
+# ggplot(cellsize_growth, aes(x=totaliron_1, y=adjustedsize, color = Temperature))+
+#  geom_violin(trim = FALSE, color = "white", fill = "black",alpha = 0.15, aes(group = totaliron_1))+
+#   #geom_smooth(geom = "line",span = 20,se = FALSE, aes (group = Temperature))+
+#   geom_point(alpha = 0.7, aes(size = adjustedsize))+
+#     scale_size_continuous(range = c(1,10))+
+#       scale_x_discrete (limits = c("3.75", "10", "15", "20", "35", "50", "100", "500"))+
+#    scale_color_manual(values = c("black", "orange", "red"))+
+#   theme_bw()+
+#     ylab (Estimated ~Cell ~Diameter~(mu*m))+
+#   xlab (expression(Fe[Total]~(nmol~L^-1)))+
+#   theme(axis.text.x=element_text(face = "bold", color = "black", size = 20),
+#         axis.title.x=element_text(size=24,face="bold"), 
+#         axis.text.y=element_text(face = "bold", size = 20, color = "black"),
+#         axis.title.y=element_text(size=24,face="bold", color = "black"))+
+#   theme(panel.grid = element_blank()) +
+# labs(col="Temperature (°C)")+
+#    labs(size="ECD (??m)")+
+#   guides(colour = guide_legend(override.aes = list(size=3)))+
+#    theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))
 
 #dev.off()
 
@@ -723,13 +1525,10 @@ labs(col="Temperature (°C)")+
 cellsize_growth$totaliron_1<-as.numeric(as.character(cellsize_growth$totaliron_1))
 cellsize_growth$Temperature<-as.numeric(as.character(cellsize_growth$Temperature))
 
-
-
 #now look at the slope of the effect of temperature on size at each iron concentration. Temperature decreases size more at low iron that it does at high iron. 
 x<- coef(lmList(adjustedsize~Temperature|totaliron_1 , data = cellsize_growth))
 
 coef(lmList(adjustedsize~Temperature|totaliron_1 , data = cellsize_growth))
-
 
 x_2 <- data.frame(x)
 x_2 <- data.frame(names = row.names(x), x_2)
@@ -745,11 +1544,8 @@ ylab(expression (Delta~Size / Delta ~ Temperature))+
 xlab (expression (Fe[Total]~ (nM)))
  # xlab ("total iron")
 
-
 cellsize_growth$totaliron_1<- as.numeric (as.character(cellsize_growth$totaliron_1))
-
 cellsize_growth$totaliron_1<- as.numeric(as.character(cellsize_growth$totaliron_1))
-
 cellsize_growth$Temperature<- as.numeric(as.character(cellsize_growth$Temperature))
 
 #png("mu_vs_size_facet.png", width=45*0.75, height=23*0.75, units="cm", res=900)
@@ -773,21 +1569,21 @@ xlab (expression (Size))+
 
 
 #--------------------------
-X<- ggplot(cellsize_growth, aes(x=Temperature, y=adjustedsize, color = Temperature))+
-  geom_point(size = 1)+
-  scale_color_gradient(high = "red", low = "blue")+
-  theme_bw()+
-  stat_summary(size = 1)+
-   stat_smooth(method = lm)+
-  # ylab(expression (Growth~rate~(mu*d^-1)))+
-#xlab (expression (Temperature~(degree*C)))+
-   theme(axis.text.x=element_text(face = "bold", size = 11, color = "black"),
-        axis.title.x=element_text(size=11,face="bold"), 
-        axis.text.y=element_text(face = "bold", size = 11, color = "black"),
-        axis.title.y=element_text(size=11,face="bold")
-        )+
-  facet_wrap(~totaliron_1, ncol = 3)
-ggplotly(X)
+# X<- ggplot(cellsize_growth, aes(x=Temperature, y=adjustedsize, color = Temperature))+
+#   geom_point(size = 1)+
+#   scale_color_gradient(high = "red", low = "blue")+
+#   theme_bw()+
+#   stat_summary(size = 1)+
+#    stat_smooth(method = lm)+
+#   # ylab(expression (Growth~rate~(mu*d^-1)))+
+# #xlab (expression (Temperature~(degree*C)))+
+#    theme(axis.text.x=element_text(face = "bold", size = 11, color = "black"),
+#         axis.title.x=element_text(size=11,face="bold"), 
+#         axis.text.y=element_text(face = "bold", size = 11, color = "black"),
+#         axis.title.y=element_text(size=11,face="bold")
+#         )+
+#   facet_wrap(~totaliron_1, ncol = 3)
+# ggplotly(X)
 
 
 
@@ -802,20 +1598,20 @@ x_2 <- data.frame(x)
 x_2 <- data.frame(names = row.names(x), x_2)
 x_2$names <- as.numeric (as.character(x_2$names))
 
-y <- ggplot (x_2, aes(x = names, y = Temperature))+ 
-  #geom_smooth( color = "black")+
-  geom_point(size = 3)+
-  ylab(expression (Delta~Size / Delta ~ Temperature))+
-  xlab (expression (Fe[Total]~ (nM)))+
-  theme_bw()+
-  theme(panel.grid = element_blank())+
-  theme(axis.text.x=element_text(face = "bold", size = 13),
-        axis.title.x=element_text(size=13,face="bold"), 
-        axis.text.y=element_text(face = "bold", size = 13),
-        axis.title.y=element_text(size=13,face="bold"))+
-  scale_x_log10()
-
-ggplotly (y)
+# y <- ggplot (x_2, aes(x = names, y = Temperature))+ 
+#   #geom_smooth( color = "black")+
+#   geom_point(size = 3)+
+#   ylab(expression (Delta~Size / Delta ~ Temperature))+
+#   xlab (expression (Fe[Total]~ (nM)))+
+#   theme_bw()+
+#   theme(panel.grid = element_blank())+
+#   theme(axis.text.x=element_text(face = "bold", size = 13),
+#         axis.title.x=element_text(size=13,face="bold"), 
+#         axis.text.y=element_text(face = "bold", size = 13),
+#         axis.title.y=element_text(size=13,face="bold"))+
+#   scale_x_log10()
+# 
+# ggplotly (y)
 
 x_2$error <- c(0.0305447, 0.02178701,0.02178701,0.02178701,0.02178701,0.02178701,0.02178701,0.02178701)
 
@@ -823,10 +1619,9 @@ x_2$change <- ((x_2$Temperature/x_2$X.Intercept.)*-100)
 x_2$up <- (((x_2$Temperature+x_2$error)/x_2$X.Intercept.)*-100)
 x_2$down <- (((x_2$Temperature-x_2$error)/x_2$X.Intercept.)*-100)
 
-
 x_2$names <- as.factor(x_2$names)
 
-png("figure3c_reduction-insize_vs_Fe.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+#png("figure3c_reduction-insize_vs_Fe.png", width=45*0.75, height=23*0.75, units="cm", res=900)
 ggplot (x_2, aes(x = names, y = change))+
   geom_point(size = 5)+
 #ylim(1,5)+
@@ -840,8 +1635,7 @@ scale_x_discrete (limits = c("3.75", "10", "15", "20", "35", "50", "100", "500")
         axis.text.y=element_text(face = "bold", size = 20, color = "black"),
         axis.title.y=element_text(size=24,face="bold"))+
    theme(panel.grid = element_blank())
-dev.off()
-
+#dev.off()
 ```
 
 
@@ -939,7 +1733,13 @@ ggplot(sizeovertime_sub, aes(x=daycount, y=size, color = totaliron_1))+
 ```
 
 
-photophysiology
+
+
+
+
+
+
+#Figure 4 photophysiology
 ```{r}
 #read in raw fv/fm and sigma values
 photophys <- read.csv("fvfm-sigma_6C3C1C.csv",  header = TRUE)
@@ -988,19 +1788,12 @@ ggplot(photophys_fe, aes(x= treatment, y=sigma, color = Temperature))+
 #############
 
 
-
-
-
-
-
-
-
-
 #fvfm plot
 #png("figure4a_fvfm.png", width=45*0.75, height=23*0.75, units="cm", res=900)
  ggplot(photophys_fe, aes(x= Fee, y=fvfm, color = Temperature))+
+  #geom_point(size = 5)+
    stat_summary(size=1)+
-   stat_summary(fun.data =  mean_se, geom = "errorbar",width = 0.05, aes(colour = Temperature ))+   
+   stat_summary(fun.data =  mean_se, geom = "errorbar",width = 0.05, aes(colour = Temperature ))+ 
    scale_color_manual(values = c("black", "orange", "red"))+
    theme_bw()+
    ylim(0.1,0.5)+
@@ -1008,6 +1801,11 @@ ggplot(photophys_fe, aes(x= treatment, y=sigma, color = Temperature))+
    ylab(expression (F[v]/F[m]))+
    scale_x_log10()+
    xlab (expression ("Fe'"~(pmol~L^-1)))+
+  #geom_line(data = fvfmfits, aes(x = Fee, y = emmean, color = factor(Temperature)), size = 1)+
+  #geom_errorbar(data = fvfmfits, aes(ymin=lower.CL, ymax=upper.CL))+
+
+   # stat_summary(fun.data = mean_se, geom = "tile", width = 0.7,
+   #             fill = "pink", alpha = 0.6)
    theme(panel.grid = element_blank())+
    theme(axis.text.x=element_text(face = "bold", size = 20, color = "black"),
         axis.title.x=element_text(size=24,face="bold"), 
@@ -1017,6 +1815,56 @@ ggplot(photophys_fe, aes(x= treatment, y=sigma, color = Temperature))+
    labs(col="Temperature (°C)")+
    theme(panel.grid = element_blank())
  
+
+gam_1 <- gam (fvfm ~ s(log(Fee),bs =  "cr") + s(as.numeric(Temperature), k = 3), method = "REML",  data= photophys_fe)
+summary(gam_1)
+
+gam_2 <- gam (fvfm ~ s(log(Fee),bs =  "cr"), method = "REML",  data= photophys_fe)
+summary(gam_2)
+
+gam_3 <- gam (fvfm ~  s(as.numeric(Temperature), k = 3), method = "REML",  data= photophys_fe)
+summary(gam_3)
+
+AIC(gam_1, gam_2, gam_3)
+
+pred <- emmeans(
+  gam_1, # specify model 
+  c("Fee", "Temperature"), # specify predictors
+  # specify at what points you want to get predictions:
+  at = list(
+    Fee = seq(8, 1400, length.out = 100),
+    Temperature = c(1, 3, 6)
+  )
+)
+
+fvfmfits <- data.frame(pred)
+
+ggplot(fvfmfits, aes(x=Fee, y=emmean, color = factor(Temperature), group = factor(Temperature)))+
+  scale_color_manual(values = c("black", "orange", "red"))+
+  scale_fill_manual(values = c("black", "orange", "red" ))+
+  theme_bw()+
+  geom_line(size = 1)+
+  geom_ribbon(data = fvfmfits, aes(ymin=fvfmfits$lower.CL, ymax=upper.CL, fill = factor(Temperature)), linetype=0, alpha=0.1)+
+ # geom_errorbar(data = fvfmfits, aes(ymin=lower.CL, ymax=upper.CL))+
+  #geom_point(data=photophys_fe, aes(x=Fee, y = fvfm))+
+  stat_summary(data=photophys_fe,aes(x = Fee, y = fvfm), size = 1.2)+
+  scale_x_log10()+
+  xlab (expression ("Fe'"~(pmol~L^-1)))+
+  xlab (expression (Fe*"'"~ (pmol~L^-1)))+
+  theme(axis.text.x=element_text(face = "bold", color = "black", size = 20), axis.title.x=element_text(size=24,face="bold"), axis.text.y=element_text(face = "bold", size = 20, color = "black"), axis.title.y=element_text(size=24,face="bold", color = "black"))+
+  theme(panel.grid = element_blank())+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  labs(col="Temperature (°C)")
+
+summary(gam_1)
+
+
+fvfmlinear_inter_squared <- lm(fvfm^2 ~ log(Fee)*Temperature, data = photophys_fe)
+fvfmlinear_Fe <- lm(fvfm ~ log(Fee), data = photophys_fe)
+fvfmlinear_temp <- lm(fvfm ~Temperature, data = photophys_fe)
+
+summary(fvfmlinear_inter)
+AIC(fvfmlinear_inter, fvfmlinear_add, fvfmlinear_Fe, fvfmlinear_temp)
  
 #Sigma plot
  ggplot(photophys_fe, aes(x= Fee, y=sigma, color = Temperature))+
@@ -1047,7 +1895,16 @@ df1 <- aggregate(photophys_fe [c("fvfm", "sigma")], list (photophys_fe$rep),mean
 colnames(df1)<- c("treatment", "fvfm", "sigma")
 photophys_fe_fvfm_vs_sigma <- merge (df, df1, by = "treatment")
 photophys_fe_fvfm_vs_sigma$temperature <- str_sub(photophys_fe_fvfm_vs_sigma$treatment, start=1, end = 3)
-photophys_fe_fvfm_vs_sigma_2 <- photophys_fe_fvfm_vs_sigma [-c(1:16),]
+photophys_fe_fvfm_vs_sigma_2 <- dplyr::filter(photophys_fe_fvfm_vs_sigma, grepl("6.0", temperature))
+
+#photophys_fe_fvfm_vs_sigma$temperature <- as.numeric(photophys_fe_fvfm_vs_sigma$temperature)
+
+#reviewer comment to add temperature as interacting instead of one temperature.
+X<- lm (fvfm ~ sigma*temperature, data = photophys_fe_fvfm_vs_sigma)
+summary(X)
+coef(X)
+
+
 
 ggplot(photophys_fe_fvfm_vs_sigma, aes(x= sigma, y=fvfm, color= temperature))+
   geom_point(size = 4)+
@@ -1111,9 +1968,6 @@ ggplot(photophys_fe, aes(x= Fee, y=fvpercell, color = Temperature))+
 #http://www.sthda.com/english/wiki/one-way-anova-test-in-r#check-the-normality-assumption
 
 #hist(photophys_fe$fvfm)
-library(car)
-
-
 #using the ggpubr package, we check for normality:
 ggdensity(photophys_fe$fvfm)
 #this shows whether the data are normal/bellshaped. in this case they are not
@@ -1125,19 +1979,18 @@ ggqqplot(chla_aov$value) #this shows whether data follow reference line. We have
 shapiro.test(photophys_fe$fvfm)
 #the output for the shapiro test shows that the chl-a data are not normally distributed (p value is <0.05, which means data violate normality)
 
-
 #an alternative to anova , a non-parametric test would be the kruskal test
-kruskal.test(RCII~Temperature, photophys_fe)
+kruskal.test(fvfm~Fee, photophys_fe)
 
 #this is if variance rules are broken (pvalue is significant in levene test). The one way function does a Welsh test
 oneway.test(RCII~Temperature, photophys_fe)
 kruskal.test(RCII~FeEDTA, photophys_fe)
 
 
-x<- aov(RCII~FeEDTA, photophys_fe)
+x<- lm(fvfm~Temperature*log(Fee), photophys_fe)
 summary(x)
 
-
+plot(x)
 
 
 
@@ -1181,6 +2034,73 @@ coef(x)
 ```
 
 
+fvfm
+```{r}
+photophys_fe$replicate <- paste(photophys_fe$culturetemp,'_',photophys_fe$iron)
+
+photophys_fe$Temperature <- as.numeric(photophys_fe$Temperature)
+
+fvfm_nlme_1 <- nlme(fvfm ~ SSmicmen(Fee, Vm, K), 
+                      fixed = list(Vm+K~as.factor(Temperature)), 
+                      random = K~1 | replicate, 
+                      start = list(fixed = c(Vm = c(0.3, 0.35, 0.4), K= c(50,60,70))),
+                      data = photophys_fe)
+
+
+fvfm_nlme_2 <- nlme(fvfm ~ SSmicmen(Fee, Vm, K), 
+                      fixed = list(Vm~as.factor(Temperature), K~1), 
+                      random = K~1 | replicate, 
+                      start = list(fixed = c(Vm = c(0.3, 0.35, 0.4), K= c(60))),
+                      data = photophys_fe)
+
+fvfm_nlme_3 <- nlme(fvfm ~ SSmicmen(Fee, Vm, K), 
+                      fixed = list(K~as.factor(Temperature), Vm~1), 
+                      random = K~1 | replicate, 
+                      start = list(fixed = c(Vm = c(0.35), K= c(50,60,70))),
+                      data = photophys_fe)
+
+fvfm_nlme_4 <- nlme(fvfm ~ SSmicmen(Fee, Vm, K), 
+                      fixed = list( Vm+K~1), 
+                      random = K~1 | replicate, 
+                      start = list(fixed = c(Vm = c(0.35), K= c(60))),
+                      data = photophys_fe)
+
+anova(fvfm_nlme_1, fvfm_nlme_4)
+
+summary(fvfm_nlme_2)
+#$tTable[,2]
+      
+newdat <- expand.grid(Temperature = c (1,3,6), Fee=7:1450)
+newdat$wpred <- predict(fvfm_nlme_1,newdat,level=0)
+
+ggplot (newdat,aes(x = Fee, y = wpred, group = factor(Temperature), color = factor(Temperature)))+
+  geom_line(size = 1.5)+
+  #scale_x_log10()+
+  #geom_point(data=mergedata_sub, aes(x = Fee, y = mumax, color = factor(Temperature)), size = 4)+
+  stat_summary(data=photophys_fe,aes(x = Fee, y = fvfm, color = factor(Temperature)), size = 1.5)+
+  scale_color_manual(values = c("black", "orange", "red", "darkred"))+
+  ylab(expression (F[v]/F[m]))+
+  xlab (expression ("Fe'"~(pmol~L^-1)))+
+  theme(axis.text.x = element_text (angle = 60, hjust =1))+
+  theme_bw()+
+  theme(axis.text.x=element_text(face = "bold", size = 26, color = "black"),
+        axis.title.x=element_text(size=32,face="bold"), 
+        axis.text.y=element_text(face = "bold", size = 26, color = "black"),
+        axis.title.y=element_text(size=32,face="bold"))+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  labs(col="Temperature (°C)")+
+  theme(panel.grid = element_blank())
+
+
+ 
+```
+
+
+
+
+
+
+
 
 
 cellcount vs RFU test 
@@ -1210,7 +2130,7 @@ cellcountvsRFU$Fe <- str_sub(cellcountvsRFU$Fe, start=1, end =-3)
 cellcountvsRFU$Fe<- as.numeric (cellcountvsRFU$Fe)
 cellcountvsRFU <- subset(cellcountvsRFU, cellcount<600)
 
-png("FigureS2_rfuvscellcount.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+#png("FigureS2_rfuvscellcount.png", width=45*0.75, height=23*0.75, units="cm", res=900)
 ggplot (cellcountvsRFU, aes (x = cellcount, y = RFU))+
   geom_point (size=4, aes(color = culturetemp))+
   geom_smooth(method ="lm", color = "black", size = 1.5)+
@@ -1228,7 +2148,8 @@ ggplot (cellcountvsRFU, aes (x = cellcount, y = RFU))+
    theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
    labs(col="Temperature (°C)")+
    theme(panel.grid = element_blank())
-dev.off()
+
+#dev.off()
 
 x <- lm (RFU~cellcount, data = cellcountvsRFU) 
 summary(x)
@@ -1237,9 +2158,6 @@ coef(x)
 
 
 ```
-
-
-
 
 
 
@@ -1463,80 +2381,7 @@ theme_bw()
 
 
 
-
-
-
-
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-data_tube <- read.csv("LJ_2018_07_24_25mLtubes.csv")
-
-rfu <- data_tube [c(6,9:16 )] 
-
-rfu = melt(rfu, id.vars ="daycount" )
-rfu <- separate(rfu, col = variable, into = c("Treatment", "Replicate"))
-names(rfu)[4] = "RFU"
-
-
-ggplot(rfu, aes(x=daycount, y=RFU, colour = Treatment, shape = Replicate ))+
-geom_point(size = 3)+
- # geom_line(size = 1.4)+
-  scale_color_manual(values = c("red", "black"))+
-stat_summary(fun.y = mean, geom = "line",aes(group =Treatment, color = Treatment), size = 1.2)+
-#stat_summary(fun.data =  mean_se, geom = "errorbar", colour = "black")+
-xlab ("Days Since Inoculation")+
-ylab ("RFU")+
-ggtitle("Growth Curves of +/- Fe Cultures in 28 mL Tubes. Transfer #1")+
-theme_bw()+
-theme(plot.title = element_text(hjust = 0.5))+
-theme(axis.text.x = element_text(angle = 50, vjust = 1.0, hjust = 1.0))+
-guides(colour=guide_legend(order = 1))+
-scale_color_manual(name = "Treatment", labels = c("+Fe", "-Fe"), values = c("red", "black"))+
-#geom_jitter(width = 0.11, size =2)+
- #stat_summary(fun.y = mean, geom = "line", size = 12, alpha = 0.2,  aes(group = Treatment ))+
-  #scale_x_continuous(limits = c(0,5))
-  #scale_x_continuous(breaks = rfu$daycount)
-  scale_x_continuous(breaks = seq(min(rfu$daycount), max(rfu$daycount), by = 1))+
-  theme( legend.background = element_rect(color = "black"))+
-  stat_summary(fun.data = mean_se, geom= "ribbon", aes( group = Treatment, color = NA, fill = Treatment), alpha = 0.3)+
-  scale_fill_manual(values = c("Fe" = "red", "noFe"="black"))+
-  guides (fill = FALSE)+
-   #scale_y_log10()
-scale_y_continuous(breaks= seq(0,400, by=10))
-  
-
-  #guides(shape = FALSE)
-  #guides(color = FALSE)
-#labs(shape = "bdbd")
-
-
-  #legend.position = c(0.1,0.65)
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Cellcount stuff 
+Cellcounts
 ```{r}
 colnames(cells) <- as.character(unlist(cells[1,]))
 cells<- cells[-c(1),]
@@ -1546,9 +2391,6 @@ names(cellcount_sub)[4] = "cellcount"
 names(cellcount_sub)[3] = "treatment"
 cellcount_sub$cellcount<- as.numeric (as.character(cellcount_sub$cellcount))
 cellcount_sub$daycount<- as.numeric (as.character(cellcount_sub$daycount))
-
-
-
 
 cellcount_plot <- ggplot(cellcount_sub, aes(x= daycount, color = culturetemp, y=cellcount, group = interaction(treatment, culturetemp)))+
   geom_point(size = 1)+
@@ -1571,6 +2413,7 @@ ggplot(cellcount_sub, aes(x = daycount, color = culturetemp, y=cellcount, group 
  #geom_smooth(span = 0.8, se = FALSE)+
   #scale_y_log10()+
   theme_bw()
+
 
 
 fit_rfu <- all_easylinear(cellcount~daycount |treatment+culturetemp, data = cellcount_sub)
@@ -1674,6 +2517,460 @@ ggplot(Mn, aes(x= Mn, y=mumax, color = Temperature))+
 dev.off()
   
 ```
+
+
+
+
+
+
+delete after this
+```{r}
+#########
+temp <- c(1,1,1,3,3,3,6,6,6,6,6,1,1,1,3,3,3,6,6,6,6,6,6,6,1,1,1,3,3,3,6,6,6,6,6,6,6,1,1,1,3,3,3,6,6,6,6,6,6,6,1,1,1,3,3,3,6,6,6,6,6,6,6,6,1,3,3,3,6,6,6,6,6,6,1,1,1,3,3,3,6,6,6,6,6,6,1,1,1,3,3,3,6,6,6,6,6,6,6)
+
+Fe<- c(41.922282,41.922282,41.922282,37.23794,37.23794,37.23794,31.662541,31.662541,31.662541,31.662541,31.662541,279.720746,279.720746,279.720746,248.465109,248.465109,248.465109,211.264016,211.264016,211.264016,211.264016,211.264016,211.264016,211.264016,27.946784,27.946784,27.946784,24.824046,24.824046,24.824046,21.1073,21.1073,21.1073,21.1073,21.1073,21.1073,21.1073,55.899183,55.899183,55.899183,49.65308,49.65308,49.65308,42.218842,42.218842,42.218842,42.218842,42.218842,42.218842,42.218842,97.838316,97.838316,97.838316,86.905988,86.905988,86.905988,73.89411,73.89411,73.89411,73.89411,73.89411,73.89411,73.89411,73.89411,10.479381,9.308428,9.308428,9.308428,7.914737,7.914737,7.914737,7.914737,7.914737,7.914737,1404.251692,1404.251692,1404.251692,1247.342413,1247.342413,1247.342413,1060.585803,1060.585803,1060.585803,1060.585803,1060.585803,1060.585803,139.790093,139.790093,139.790093,124.170127,124.170127,124.170127,105.578928,105.578928,105.578928,105.578928,105.578928,105.578928,105.578928)
+
+mu <- c (0.089477044,0.07255548,0.08559649,0.148534783,0.152138103,0.147775201,0.150692377,0.145413964,0.150045565,0.139712503,0.157196943,0.156799728,0.138026014,0.148072372,0.243282066,0.253498973,0.236256636,0.310144261,0.281107498,0.318315753,0.34032368,0.28983498,0.346447123,0.290460835,0.023320566,0.009979184,0.033718296,0.090433546,0.091796231,0.096347009,0.157691429,0.112364272,0.155331758,0.163524305,0.154034127,0.12710671,0.169722436,0.065031661,0.086993854,0.058166144,0.164571185,0.168336541,0.169147685,0.22096527,0.230259712,0.216570836,0.246243675,0.220842629,0.209989795,0.223320508,0.118446307,0.143604328,0.109049472,0.222921061,0.225832377,0.221248684,0.197760991,0.366515371,0.367449366,0.21394256,0.282823072,0.364060778,0.285209082,0.198528104,0.025291159,0.073610059,0.060269992,0.0557738,0.049028256,0.088362402,0.047770389,0.057592633,0.094855429,0.060442358,0.154164802,0.165561525,0.164140252,0.243798695,0.242919888,0.256692927,0.309521766,0.323766393,0.294349209,0.31684002,0.316469317,0.317274182,0.121243793,0.142287948,0.11136973,0.219106574,0.227289561,0.222398572,0.32907817,0.287993773,0.297453928,0.315788911,0.318406081,0.328165403,0.29831968)
+############
+require(lme4) ## nlmer, and lmer is from lme4
+require(nlme)
+require(lmerTest)
+require(gam)
+#growth <- data.frame(temp, mu, Fe)
+growth <- mergedata_sub [-c(3)]
+growth$replicate <- str_sub(growth$treatment, start = -6, end = -6)
+
+ggplot(growth, aes(x = Temperature, y= mumax, color = Temperature))+
+  geom_point(size = 5)+
+  #scale_x_log10()+
+  theme_bw()
+
+
+ggplot(growth, aes(x = Fee, y= mumax))+
+  geom_point(size = 5)+
+ # scale_x_log10()+
+  theme_bw()
+
+
+
+
+
+#3 replicates are not good random effects 
+linear <- lmer (mumax ~ Fee*Temperature +(1|replicate),  data= growth)
+gam <- gam(mumax ~log(Fee)*Temperature, data = growth)
+log <- lmer (mumax ~ log(Fee)*Temperature +(1|replicate),  data= growth)
+sqrt <- lmer (mumax ~ sqrt(Fee)*Temperature +(1|replicate),  data= growth)
+squared <- lmer (mumax^2 ~(Fee)*Temperature + (1|replicate),   data= growth)
+
+ 
+AIC(linear, log, sqrt, squared, gam)
+
+
+linear <- lm(mumax ~ log(Fee)*Temperature,  data= growth)
+linear1<- lm(mumax~log(Fee), data = growth)
+anova(linear, linear1)
+plot(linear)
+
+
+monod_temp <- nls((mumax ~ (Vm * Fee/(K+(B*Temperature)+Fee))), data =growth, 
+    start = list(K=1E-6, Vm = max(growth$mumax),B=0.5))
+
+monod_temp <- nls((mumax ~ (Vm * Fee/(K+Fee))+B+Temperature), data =growth, 
+    start = list(K=1E-6, Vm = max(growth$mumax),B=0))
+
+
+monod <- nls((mumax ~ Vm * Fee/(K+Fee)), data =growth, 
+    start = list(K=1E-6, Vm = max(growth$mumax)))
+
+linear <- lm(mumax ~ log(Fee)*Temperature, data= growth)
+linearFe <- lm(mumax~Fee, data = growth)
+
+
+
+summary(logz)
+anova(log, log1, log2, log3, log4, log5, log6)
+
+anova(log)
+summary(logz)
+
+sqrt <- lm (mumax ~ sqrt(Fee)*Temperature,  data= growth)
+squared <- lm (mumax^2 ~(Fee)*Temperature,  data= growth)
+linear <- lm(mumax ~Fee*Temperature, data = growth)
+
+
+
+#squared <- lmer (mumax ~micmen(Fee)*Temperature +(1|replicate),  data= growth)
+summary(squared)
+confint(linear)
+plot(mumax ~Fee, data = growth)
+
+AIC(sqrt, squared, linear)  
+
+
+
+nested <- lm (mumax ~ log(Fee)*Temperature, data = growth)
+temp <- lm (mumax ~Temperature, data = growth)
+Fe <- lm (mumax ~Fee, data = growth)
+summary(nested)
+
+anova(nested, temp, Fe)  
+
+
+
+model_selection(data=cbind(Fe, mu), name_results = "AICresults", name_dir = "C:/Users/Loay Jabre/Desktop/PhD/Growth Experiment/RFU-growth-experiment/GrowthPaper")
+
+z <- read.csv("AICresults.csv", sep = ";")
+
+summary (linear)
+
+
+#https://stats.stackexchange.com/questions/302178/repeated-measures-anova-in-r-with-monotonically-increasing-nonlinear-timeseries
+
+#https://hal.archives-ouvertes.fr/hal-02340242/document
+
+#http://pages.stat.wisc.edu/~bates/UseR2008/WorkshopD.pdf
+``` 
+
+
+
+
+stats test
+```{r}
+require(ggplot2)
+require(lme4) ## nlmer, and lmer is from lme4
+require(nlme)
+require(lmerTest)
+require(gam)
+
+
+#this is the data for fv/fm
+temperature <- c(1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6)
+
+nutrient <- c(41.922282,41.922282,41.922282,37.23794,37.23794,37.23794,31.662541,31.662541,31.662541,279.720746,279.720746,279.720746,248.465109,248.465109,248.465109,211.264016,211.264016,211.264016,27.946784,27.946784,27.946784,24.824046,24.824046,24.824046,21.1073,21.1073,21.1073,55.899183,55.899183,55.899183,49.65308,49.65308,49.65308,42.218842,42.218842,42.218842,97.838316,97.838316,97.838316,86.905988,86.905988,86.905988,73.89411,73.89411,73.89411,10.479381,10.479381,10.479381,9.308428,9.308428,9.308428,7.914737,7.914737,7.914737,1404.251692,1404.251692,1404.251692,1247.342413,1247.342413,1247.342413,1060.585803,1060.585803,1060.585803,139.790093,139.790093,139.790093,124.170127,124.170127,124.170127,105.578928,105.578928,105.578928)
+
+replicate <- c("1C_41.922282","1C_41.922282","1C_41.922282","3C_37.23794","3C_37.23794","3C_37.23794","6C_31.662541","6C_31.662541","6C_31.662541","1C_279.720746","1C_279.720746","1C_279.720746","3C_248.465109","3C_248.465109","3C_248.465109","6C_211.264016","6C_211.264016","6C_211.264016","1C_27.946784","1C_27.946784","1C_27.946784","3C_24.824046","3C_24.824046","3C_24.824046","6C_21.1073","6C_21.1073","6C_21.1073","1C_55.899183","1C_55.899183","1C_55.899183","3C_49.65308","3C_49.65308","3C_49.65308","6C_42.218842","6C_42.218842","6C_42.218842","1C_97.838316","1C_97.838316","1C_97.838316","3C_86.905988","3C_86.905988","3C_86.905988","6C_73.89411","6C_73.89411","6C_73.89411","1C_10.479381","1C_10.479381","1C_10.479381","3C_9.308428","3C_9.308428","3C_9.308428","6C_7.914737","6C_7.914737","6C_7.914737","1C_1404.251692","1C_1404.251692","1C_1404.251692","3C_1247.342413","3C_1247.342413","3C_1247.342413","6C_1060.585803","6C_1060.585803","6C_1060.585803","1C_139.790093","1C_139.790093","1C_139.790093","3C_124.170127","3C_124.170127","3C_124.170127","6C_105.578928","6C_105.578928","6C_105.578928")
+
+length <- c(0.284222,0.271812,0.287842,0.266703,0.325212,0.323167,0.368914,0.307848,0.331279,0.349361,0.344158,0.379752,0.418207,0.398789,0.397851,0.481935,0.46838,0.447341,0.291471,0.38784,0.355353,0.353436,0.40762,0.321866,0.284687,0.26343,0.281308,0.361157,0.367518,0.328645,0.390822,0.372086,0.366396,0.357013,0.388808,0.440506,0.351289,0.348172,0.345575,0.35433,0.363403,0.332073,0.34037,0.315966,0.351829,0.207838,0.227385,0.183385,0.198436,0.217075,0.270751,0.28564,0.228815,0.212524,0.410496,0.415918,0.416817,0.406967,0.38017,0.417732,0.453175,0.502706,0.477136,0.371708,0.344421,0.366723,0.398991,0.393513,0.442445,0.414689,0.442346,0.446943)
+
+mydata <-data.frame(nutrient, temperature, replicate, length)
+
+ggplot(mydata, aes(x =nutrient, y = length, color = factor(temperature), group = factor(temperature)))+
+  #stat_smooth(method = 'log10' ,  se = F, size = 1)+
+  geom_point(size = 4, alpha = 0.8)+
+  #stat_summary(fun.y = mean, geom = "point",aes(group =replicate, color =factor(temperature)), size = 5)+
+  scale_color_manual(values = c("black", "yellow", "red"))+
+  scale_x_log10()+
+  theme_bw()
+
+
+
+model0 <-  nls(length ~  (K) / (1 + exp(Po + r * nutrient)) , data = mydata, start=list(Po=0.5, r=-0.035, K= 5))
+
+model1 <-  nls(length ~ (a*temperature + K) / (1 + exp((Po+a*temperature) + (r+a*temperature) * nutrient)), data = mydata, start=list(Po=0.5, r=-0.035, K= 5, a = 0.00000001))
+
+model2 <-  nls(length ~  (a*temperature) + ((K) / (1 + exp(Po + r * nutrient))), data = mydata, start=list(Po=0.5, r=-0.035, K= 5, a = 0.0000001))
+
+model3 <-  nls(length ~ (a*temperature + K) / (1 + exp((Po+a*temperature) + (r) * nutrient)), data = mydata, start=list(Po=0.5, r=-0.035, K= 5, a = 0.00000001))
+
+
+model4 <-  nls(length ~ (a*temperature + K) / (1 + exp((Po) + (r) * nutrient)), data = mydata, start=list(Po=0.5, r=-0.035, K= 5, a = 0.00000001))
+
+summary(model3)
+
+
+
+anova(model1, model2, model3, model4, model5)
+#model3 has the lowest AIC value, so it is the best fitting model. 
+
+pred <- emmeans(
+  model3, # specify model 
+  c("nutrient", "temperature"), 
+  at = list( nutrient = seq(8, 1400, length.out = 100), temperature = c(1, 3, 6)))
+
+
+model3fit <- data.frame(pred)
+
+ggplot(model3fit, aes(x = nutrient, y = emmean, group = factor(temperature),color = factor(temperature))) +
+  geom_line() +
+  scale_color_manual(values = c("black", "yellow", "red"))+
+  geom_point(data = mydata, aes(x = nutrient, y = length))+
+ # geom_ribbon(data = model3fit, aes(ymin=model3fit$asymp.LCL, ymax=model3fit$asymp.UCL, fill = factor(Temperature)), linetype=0, alpha=0.2)+
+  labs(y = "predicted length")+
+  scale_x_log10()+
+  geom_errorbar(aes(ymin=asymp.LCL, ymax=asymp.UCL))+
+  theme_bw()
+
+
+
+
+ggplot(mydata, aes(x =nutrient, y = length, color = factor(temperature), group = factor(temperature)))+
+  #stat_smooth(method = 'log10' ,  se = F, size = 1)+
+  geom_point(size = 4, alpha = 0.8)+
+  #stat_summary(fun.y = mean, geom = "point",aes(group =replicate, color =factor(temperature)), size = 5)+
+  scale_color_manual(values = c("black", "yellow", "red"))+
+  scale_x_log10()+
+  theme_bw()
+
+
+
+
+
+
+
+
+
+
+m1 <- nls 
+
+model1 <- lmer (length ~log(nutrient)*temperature +(1|replicate))
+summary(model1)
+anova(model1)
+
+
+pred <- emmeans(
+  model1, # specify model 
+  c("nutrient", "temperature"), # specify predictors
+  # specify at what points you want to get predictions:
+  at = list(
+    nutrient = seq(8, 1400, length.out = 20),
+    temperature = c(1, 3, 6)
+  )
+)
+
+
+# make data frame for plotting
+
+
+linear <- lmer (length ~ nutrient*temperature +(1|replicate),  data= mydata)
+#gam(length ~ nutrient+temperature,  data= mydata)
+log_lmer <- lmer (length ~ log(nutrient)*as.numeric(temperature) +(1|replicate),  data= mydata)
+log_lm <- lm (length ~ log(nutrient)*as.numeric(temperature) ,  data= mydata)
+
+summary(log_lm)
+
+anova(log_lmer, log_lm)
+sqrt <- lmer (length ~ sqrt(nutrient)*temperature +(1|replicate),  data= mydata)
+squared <- lmer (length^2 ~ (nutrient)*temperature +(1|replicate),  data= mydata)
+lmnotmixed <- lm (length ~ log(nutrient)*as.factor(temperature),  data= mydata)
+summary(lmnotmixed)
+
+nonlinear<-nls(length ~  nutrient*a + temperature*b + c,data=mydata,
+               start=c(a=0,b=0,c=0))
+summary(nonlinear)
+
+AIC(linear, log, sqrt,lmnotmixed, nonlinear)
+summary(log)
+summary(gam)
+
+log_interactive <- lmer (length ~ log(nutrient)*temperature +(1|replicate),  data= mydata)
+plot(log_interactive)
+log_additive <- lmer(length ~ log(nutrient)+temperature +(1|replicate),  data= mydata)
+log_temperature <- lmer (length ~ temperature +(1|replicate),  data= mydata)
+log_nutrient <- lmer (length ~ log(nutrient) +(1|replicate),  data= mydata)
+
+AIC(log_interactive, log_additive, log_temperature, log_nutrient, m3)
+AIC(log_interactive)
+
+
+log_interactive <- aov (length ~ log(nutrient)*temperature,  data= mydata)
+log_additive <- lm(length ~ log(nutrient)+temperature,   data= mydata)
+log_temperature <- lm (length ~ temperature,   data= mydata)
+log_nutrient <- lm (length ~ log(nutrient),  data= mydata)
+AIC(log_interactive, log_additive, log_temperature, log_nutrient, m3)
+
+summary(log_interactive)
+```
+
+
+#answer1
+```{r}
+# treating temperature as numeric
+mydata$temperature <- as.numeric(mydata$temperature)
+m1 <- lmer(length ~ nutrient + temperature + (1 | replicate), mydata)
+#m1.1 <- lm(length ~ nutrient + temperature , mydata)
+
+summary(m1) # significant main effects of nutrient, but not temeprature
+plot(m1)
+# looks like curvilinear relationship between nutrient and length
+# simplest way to do this is quadratic: x + x ^ 2
+# you can think of x ^ 2 as "x times x" or an interaction between x and itself
+# poly() gives us polynomial, and we indicate 2 for squared
+m2 <- lmer(length ~ poly(nutrient, 2) + temperature + (1 | replicate), mydata)
+summary(m2) # significant quadratic relationship
+
+# does this quadratic relationship depend on temperature?
+m3 <- lmer(length ~ poly(nutrient,2 ) * temperature + (1 | replicate), mydata)
+summary(m3)
+
+gam <- gam(length ~ temperature +s(nutrient), data= mydata)
+summary(gam)
+
+ #m4 <- lmer(length ~ poly(log10(nutrient),2 ) * temperature + (1 | replicate), mydata)
+#anova(m4)
+#plot(m4)
+
+anova ( m2, m3)
+ # yes, p = .033. we see the quadratic effect of nutrient and
+#   linear of temperature depend on one another. what does this look like? 
+#   let's get predicted values for the data and plot it
+
+
+
+pred <- emmeans(
+  m3, # specify model 
+  c("nutrient", "temperature"), # specify predictors
+  # specify at what points you want to get predictions:
+  at = list(
+    nutrient = seq(8, 1400, length.out = 20),
+    temperature = c(1, 3, 6)
+  )
+)
+
+# make data frame for plotting
+pred <- as.data.frame(pred)
+
+
+# ggplot(mydata, aes(x = temperature, y = length))+
+#   geom_boxplot(aes(group=temperature))+
+#   geom_point(aes(color = log(nutrient)))
+
+
+
+# and plot
+ggplot(pred, aes(x = nutrient, y = emmean, 
+                 group = factor(temperature),color = factor(temperature))) +
+  
+  #geom_point()+
+  scale_x_log10()+
+  geom_point(data = mydata, aes(x = nutrient, y = length))+
+  geom_line() +
+  labs(y = "predicted length")
+  #geom_errorbar(aes(ymin=lower.CL, ymax=upper.CL))
+
+require(ggeffects)
+ggpredict(m3, c("nutrient [all]", "temperature")) %>% plot() 
+#ggpredict(m3)
+
+#https://stats.stackexchange.com/questions/187996/interaction-term-in-a-linear-mixed-effect-model-in-r/188018
+x<- lm(length ~nutrient)
+```
+
+
+#answer2
+```{r}
+temperature <- c(1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6,1,1,1,3,3,3,6,6,6)
+
+nutrient <- c(41.922282,41.922282,41.922282,37.23794,37.23794,37.23794,31.662541,31.662541,31.662541,279.720746,279.720746,279.720746,248.465109,248.465109,248.465109,211.264016,211.264016,211.264016,27.946784,27.946784,27.946784,24.824046,24.824046,24.824046,21.1073,21.1073,21.1073,55.899183,55.899183,55.899183,49.65308,49.65308,49.65308,42.218842,42.218842,42.218842,97.838316,97.838316,97.838316,86.905988,86.905988,86.905988,73.89411,73.89411,73.89411,10.479381,10.479381,10.479381,9.308428,9.308428,9.308428,7.914737,7.914737,7.914737,1404.251692,1404.251692,1404.251692,1247.342413,1247.342413,1247.342413,1060.585803,1060.585803,1060.585803,139.790093,139.790093,139.790093,124.170127,124.170127,124.170127,105.578928,105.578928,105.578928)
+
+replicate <- c("1C_41.922282","1C_41.922282","1C_41.922282","3C_37.23794","3C_37.23794","3C_37.23794","6C_31.662541","6C_31.662541","6C_31.662541","1C_279.720746","1C_279.720746","1C_279.720746","3C_248.465109","3C_248.465109","3C_248.465109","6C_211.264016","6C_211.264016","6C_211.264016","1C_27.946784","1C_27.946784","1C_27.946784","3C_24.824046","3C_24.824046","3C_24.824046","6C_21.1073","6C_21.1073","6C_21.1073","1C_55.899183","1C_55.899183","1C_55.899183","3C_49.65308","3C_49.65308","3C_49.65308","6C_42.218842","6C_42.218842","6C_42.218842","1C_97.838316","1C_97.838316","1C_97.838316","3C_86.905988","3C_86.905988","3C_86.905988","6C_73.89411","6C_73.89411","6C_73.89411","1C_10.479381","1C_10.479381","1C_10.479381","3C_9.308428","3C_9.308428","3C_9.308428","6C_7.914737","6C_7.914737","6C_7.914737","1C_1404.251692","1C_1404.251692","1C_1404.251692","3C_1247.342413","3C_1247.342413","3C_1247.342413","6C_1060.585803","6C_1060.585803","6C_1060.585803","1C_139.790093","1C_139.790093","1C_139.790093","3C_124.170127","3C_124.170127","3C_124.170127","6C_105.578928","6C_105.578928","6C_105.578928")
+
+length <- c(0.284222,0.271812,0.287842,0.266703,0.325212,0.323167,0.368914,0.307848,0.331279,0.349361,0.344158,0.379752,0.418207,0.398789,0.397851,0.481935,0.46838,0.447341,0.291471,0.38784,0.355353,0.353436,0.40762,0.321866,0.284687,0.26343,0.281308,0.361157,0.367518,0.328645,0.390822,0.372086,0.366396,0.357013,0.388808,0.440506,0.351289,0.348172,0.345575,0.35433,0.363403,0.332073,0.34037,0.315966,0.351829,0.207838,0.227385,0.183385,0.198436,0.217075,0.270751,0.28564,0.228815,0.212524,0.410496,0.415918,0.416817,0.406967,0.38017,0.417732,0.453175,0.502706,0.477136,0.371708,0.344421,0.366723,0.398991,0.393513,0.442445,0.414689,0.442346,0.446943)
+
+mydata <-data.frame(nutrient, temperature, replicate, length)
+
+
+
+lattice::xyplot(length ~ log(nutrient) | temperature, data = mydata)
+mylm = lm(length ~ as.factor(temperature) * log(nutrient), data = mydata)
+summary(mylm)#i added this
+
+emmip(mylm, temperature ~ nutrient, at = list(nutrient = c(10,20,40,80,160,320,640,1280)))
+
+pdat = .Last.value$data
+
+ggplot(pdat, aes(x = nutrient, y = yvar, color = factor(temperature)))+
+  geom_line(aes(group = factor(temperature)))+
+  geom_point(data=mydata, aes(x = nutrient, y = length))+
+  theme_bw()
+  scale_x_log10()#I added this
+
+lattice::xyplot(yvar ~ nutrient, groups = ~temperature, data = pdat, type="l")
+
+emtrends(mylm, pairwise ~ temperature, var = "log(nutrient)")
+
+```
+
+
+
+
+#3D data
+```{r}
+colors <- colors[as.numeric(iris$Species)]
+
+scatterplot3d(temperature, nutrient, length, color = temperature,  angle = 120, scale.y = 2 )
+```
+
+#another example
+```{r}
+#https://stats.stackexchange.com/questions/35486/how-to-set-up-a-non-linear-mixed-effects-model-with-random-effects-in-r-using-nl?rq=1
+df <- data.frame(A = c(0.4, 0.4, 0.2, 0.2, 0.2, 0.2, 0.2), B = c(0.3, 0.3, 0.1, 0.1, 0.1, 0.1, 0.1),
+C = c(4.4, 4.3, 5.6, 4.7, 5.1, 4.5, 4.9), SITE = c("south","south","east","east", "east", "north", "north"))
+
+ggplot(df, aes(x = B, y = C, color = B))+
+  geom_point()+
+  theme_bw()
+
+```
+
+#another example
+```{r}
+library(purrr)
+
+# Function to create simulated data
+mm_fun <- function(args) {
+  time <- args$time
+  Vmax <- args$Vmax
+  half.sat <- args$half.sat
+  y <- (time * Vmax)/(time + half.sat) + rnorm(length(time), mean=0, sd=1)
+  df <- data.frame(time=time, y=y)
+}
+
+# The domain of the data
+time <- 0:100 # All data sets have the same domain
+set.seed(0)
+
+# List of parameters with which to make 6 data sets
+param_l <- list(
+  a1 = list(time=time, Vmax = 20, half.sat=25),
+  a2 = list(time=time, Vmax=22, half.sat=28),
+  a3 = list(time=time, Vmax=18, half.sat=23),
+  b1 = list(time=time, Vmax=5, half.sat=50),
+  b2 = list(time=time, Vmax= 5.5, half.sat=53),
+  b3 = list(time=time, Vmax=4.5, half.sat=48)
+)
+
+# Calculate data from parameters
+d <- map_df(param_l, mm_fun, .id = "sample")
+
+# Add column identifying reps
+d$treatment <- substr(d$sample, 0, 1)
+
+# Plot
+ggplot(d, aes(x=time, y=y, colour=treatment)) +
+  geom_line(aes(group=sample))
+
+
+##answer
+plot(y ~ log(time + 1), data = d)
+plot(y ~ sqrt(time), data = d)
+plot(y^2 ~ time, data = d)
+
+# Using a square-root transformation:
+LMM.sqrt <- lmer(y ~ sqrt(time) * treatment + (1|sample), data = d)
+
+# Or a logarithmic relationship:
+LMM.log <- lmer(y ~ log(time + 1) * treatment + (1|sample), data = d)
+
+# Squared response:
+LMM.sqry <- lmer(y^2 ~ time * treatment + (1|sample), data = d)
+
+anova(LMM.sqrt, LMM.log, LMM.sqry)
+summary(LMM.log)
+
+```
+
+http://www.sthda.com/english/articles/40-regression-analysis/162-nonlinear-regression-essentials-in-r-polynomial-and-spline-regression-models/
+
 
 
 
