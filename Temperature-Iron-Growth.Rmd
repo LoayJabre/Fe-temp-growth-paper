@@ -476,7 +476,7 @@ monod6C_rfu$upperfit<-fit6C[,3]
 
 #mergedata_sub_1 <- mergedata_sub [-c(92,93),] 
 
-#png("figure1_mu-vs-Fe.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+#png("L&O_figure1_mu-vs-Fe.TIFF", width=45*0.75, height=23*0.75, units="cm", res=900)
 ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = Temperature))+
   stat_summary(fun.y = mean, geom = "point",aes(group =Temperature, color = Temperature), size = 5)+
   stat_summary(fun.data =  mean_se, geom = "errorbar",width = 30, aes(colour = Temperature ))+
@@ -503,7 +503,6 @@ ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = Temperature))+
              #aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.2, fill = "orange", color = NA)+
   #geom_ribbon(data=monod6C_rfu, color = NA,
             #aes(x = Fee, ymin=lowerfit, ymax=upperfit), alpha = 0.2, fill = "red", color = NA)
-
 
 #dev.off()
 
@@ -620,7 +619,7 @@ summary(mumax_nlme_1)
 newdat <- expand.grid(Temperature = c (1,3,6), Fee=1:1450)
 newdat$wpred <- predict(mumax_nlme_1,newdat,level=0)
 
-#png("figure1_mu-vs-Fe_final.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+tiff("loayL&O_figure1_mu-vs-Fe_final.TIFF", width=48*0.75, height=25*0.75, units="cm", res=400)
 ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = factor(Temperature)))+
   stat_summary(fun.y = mean, geom = "point",aes(group =factor(Temperature), color = factor(Temperature)), size = 4.5)+
   stat_summary(fun.data =  mean_se, geom = "errorbar",width = 0, size = 1, aes(colour = factor(Temperature) ))+
@@ -635,10 +634,12 @@ ggplot (mergedata_sub, aes (x = Fee, y = mumax, color = factor(Temperature)))+
         axis.title.x=element_text(size=32,face="bold"), 
         axis.text.y=element_text(face = "bold", size = 26, color = "black"),
         axis.title.y=element_text(size=32,face="bold"))+
-  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
+  theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+# legend.position = c(0.87, 0.15))+
   labs(col="Temperature (°C)")+
   theme(panel.grid = element_blank())
-#dev.off()
+#ggsave("test.TIFF", width = 50, height = 20, units = "cm")
+
+dev.off()
 
 # #Temperature as continuous variable
 # mumax_nlme_1c <- nlme(mumax ~ SSmicmen(Fee, Vm, K), 
@@ -793,7 +794,7 @@ monod_fig2 <- function(x){
 }
 
 #Kfe plot
-#png("figure2_A_Kfe-vs-temp_final.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+#png("L&O_figure2_A_Kfe-vs-temp_final.TIFF", width=45*0.75, height=23*0.75, units="cm", res=900)
 ggplot (Km_temp, aes(x = Temperature, y = Kfe))+
   geom_point(size=8)+
   stat_function(fun = monod_fig2,size = 2 )+
@@ -819,7 +820,7 @@ line_mu <- function(x){
 } #Rsquared = 0.95
 
 #muplot
-#png("figure2_B_mu-vs-temp_final.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+#png("L&O_figure2_B_mu-vs-temp_final.TIFF", width=45*0.75, height=23*0.75, units="cm", res=900)
 ggplot (Km_temp, aes(x = Temperature, y = mu))+
   geom_point(size=7)+
   stat_function(fun = line_mu,size = 1.5)+
@@ -1349,7 +1350,7 @@ summary(sizefit_nlme1)$tTable[,2]
 newdat <- expand.grid(Temperature = c (1,3,6), Fee=7:1450)
 newdat$wpred <- predict(sizefit_nlme3,newdat,level=0)
 
-ggplot (newdat,aes(x = Fee, y = wpred, group = factor(Temperature), color = factor(Temperature)))+
+ ggplot (newdat,aes(x = Fee, y = wpred, group = factor(Temperature), color = factor(Temperature)))+
   geom_line(size = 1)+
   stat_summary(data=cellsize_growth,aes(x = Fee, y = adjustedsize, color = factor(Temperature)), size = 1.2)+
   scale_color_manual(values = c("black", "orange", "red", "darkred"))+
@@ -1361,6 +1362,8 @@ ggplot (newdat,aes(x = Fee, y = wpred, group = factor(Temperature), color = fact
   theme(panel.grid = element_blank())+
   theme (legend.title = element_text (size = 20), legend.text =   element_text(size = 16))+
   labs(col="Temperature (°C)")
+
+
 
 ```
 
@@ -1638,8 +1641,8 @@ line <- function(x){
   0.090653+ 3.078*x -0.59669*x^2 +0.0297*x^3
 }
 
-png("figure3c_reduction-insize_vs_Fe_final.png", width=45*0.75, height=23*0.75, units="cm", res=900)
-ggplot (x_2, aes(x = names, y = change))+
+#png("figure3c_reduction-insize_vs_Fe_final.png", width=45*0.75, height=23*0.75, units="cm", res=900)
+x<- ggplot (x_2, aes(x = names, y = change))+
   geom_point(size = 7)+
   #stat_function(fun=line)+
   ylim(1,5.5)+
@@ -1653,7 +1656,9 @@ ggplot (x_2, aes(x = names, y = change))+
         axis.text.y=element_text(face = "bold", size = 28, color = "black"),
         axis.title.y=element_text(size=34,face="bold"))+
    theme(panel.grid = element_blank())
-dev.off()
+
+
+#dev.off()
 ```
 
 
